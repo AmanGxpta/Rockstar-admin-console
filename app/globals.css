@@ -1,26 +1,193 @@
 @import "tailwindcss";
 
+/* Rockstar — design system tokens & base
+   Micro-learning for hairdressers & artists.
+   Clean & friendly · light-first · warm beauty tones (clay / rose / gold)
+   Fonts come from next/font in app/layout.tsx, which supplies
+   --font-display and --font-ui. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* warm neutrals */
+  --paper: #fbf7f3; /* app background */
+  --paper-2: #f4ece4; /* sunk panels */
+  --surface: #ffffff;
+  --ink: #2a211c; /* warm near-black */
+  --ink-2: #7c6c61; /* muted text */
+  --ink-3: #ac9c90; /* faint text / icons */
+  --line: #ede3d9; /* hairlines */
+  --line-2: #e3d6c9;
+
+  /* brand */
+  --clay: #c75c3c; /* primary — terracotta */
+  --clay-deep: #a8452a;
+  --clay-tint: #f8e7df;
+  --rose: #e2858a; /* secondary */
+  --rose-tint: #fbe7e7;
+  --gold: #cf9a47; /* premium / certification */
+  --gold-tint: #f6ead2;
+  --leaf: #5e8c6a; /* success / pass */
+  --leaf-tint: #e4efe5;
+  --berry: #9a5b7a; /* community / accent */
+  --berry-tint: #f3e6ee;
+
+  /* type */
+  --display: var(--font-display), system-ui, sans-serif;
+  --ui: var(--font-ui), system-ui, sans-serif;
+
+  /* radii */
+  --r-card: 24px;
+  --r-md: 16px;
+  --r-sm: 12px;
+
+  /* shadows — warm */
+  --sh-1: 0 1px 2px rgba(74, 46, 30, 0.05), 0 2px 8px rgba(74, 46, 30, 0.05);
+  --sh-2: 0 6px 18px rgba(74, 46, 30, 0.08), 0 2px 6px rgba(74, 46, 30, 0.05);
+  --sh-3: 0 18px 40px rgba(74, 46, 30, 0.14), 0 6px 14px rgba(74, 46, 30, 0.08);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-clay: var(--clay);
+  --font-sans: var(--ui);
+  --font-display: var(--display);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rs,
+.rs * {
+  font-family: var(--ui);
+}
+
+.rs {
+  color: var(--ink);
+}
+
+/* type helpers */
+.rs-display {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+}
+
+.rs-eyebrow {
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* generic placeholder media (no photography yet) */
+.rs-ph {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--rose-tint),
+    var(--clay-tint) 55%,
+    var(--gold-tint)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rs-ph::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120px 120px at 78% 22%,
+      rgba(255, 255, 255, 0.45),
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.05) 0 12px,
+      transparent 12px 24px
+    );
+  mix-blend-mode: screen;
+}
+
+.rs-ph > * {
+  position: relative;
+  z-index: 1;
+}
+
+.rs-ph-dark {
+  background: linear-gradient(160deg, #3a2a24, #5a3a2e 60%, #7a4a38);
+}
+
+/* hidden scrollbars inside app panes */
+.rs-noscroll::-webkit-scrollbar {
+  display: none;
+}
+
+.rs-noscroll {
+  scrollbar-width: none;
+}
+
+/* interactive states */
+.rs-navitem {
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.rs-navitem:hover {
+  background: var(--paper-2);
+}
+
+.rs-row:hover {
+  background: var(--paper);
+}
+
+.rs-iconbtn:hover {
+  background: var(--paper-2);
+}
+
+/* login */
+.rs-login-slide {
+  animation: rs-fade-up 0.5s ease both;
+}
+
+@keyframes rs-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rs-login-spin {
+  animation: rs-spin 0.7s linear infinite;
+}
+
+@keyframes rs-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
