@@ -8,7 +8,7 @@ import {
   SectionH,
   WBtn,
 } from "@/components/ui/primitives";
-import { getSession, homeFor } from "@/lib/session";
+import { getAuthState, homeFor } from "@/lib/session";
 
 const ENGAGEMENT = [
   2400, 3100, 2800, 3600, 3300, 4200, 4800, 4600, 5400, 5900, 5600, 6400,
@@ -33,8 +33,9 @@ const DEVICES: [string, string, string][] = [
 ];
 
 export default async function AdminDashboard() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const state = await getAuthState();
+  if (state.status !== "ok") redirect("/");
+  const { session } = state;
   if (session.role !== "admin") redirect(homeFor(session.role));
 
   return (

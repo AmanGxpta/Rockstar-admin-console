@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -23,8 +24,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${ui.variable} h-full`}>
-      <body className="rs h-full">{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className={`${display.variable} ${ui.variable} h-full`}>
+        <body className="rs h-full">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }

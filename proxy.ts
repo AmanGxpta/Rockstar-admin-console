@@ -1,27 +1,25 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const SESSION_COOKIE = "rs_session";
-const PUBLIC_PATHS = ["/login"];
+const isPublicRoute = createRouteMatcher(["/login(.*)", "/no-access"]);
 
 /**
- * Optimistic check only — presence of the session cookie, not its validity.
- * Pages and layouts still resolve the real session via getSession().
+ * Optimistic gate only — it checks for a Clerk session, not for a role.
+ * The authoritative role check lives in app/(app)/layout.tsx.
+ *
+ * auth.protect() redirects signed-out users to NEXT_PUBLIC_CLERK_SIGN_IN_URL,
+ * so that env var must be set to /login or this misbehaves silently.
  */
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(SESSION_COOKIE);
-  const isPublic = PUBLIC_PATHS.includes(pathname);
-
-  if (!hasSession && !isPublic) {
-    return NextResponse.redirect(new URL("/login", request.url));
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect();
   }
-  if (hasSession && isPublic) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-  return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for Clerk-specific frontend API routes
+    "/__clerk/(.*)",
+  ],
 };

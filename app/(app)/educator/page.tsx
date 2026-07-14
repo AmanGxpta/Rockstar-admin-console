@@ -11,7 +11,7 @@ import {
   WBtn,
   type Col,
 } from "@/components/ui/primitives";
-import { getSession, homeFor } from "@/lib/session";
+import { getAuthState, homeFor } from "@/lib/session";
 
 const ENROLLMENTS = [120, 180, 150, 220, 260, 240, 320];
 const MONTHS = ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"];
@@ -36,8 +36,9 @@ const SUB_COLS: Col[] = [
 ];
 
 export default async function EducatorDashboard() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const state = await getAuthState();
+  if (state.status !== "ok") redirect("/");
+  const { session } = state;
   if (session.role !== "educator") redirect(homeFor(session.role));
 
   const firstName = session.name.split(" ")[0];

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import { Icon } from "@/components/ui/icon";
 import { RSLogo, Avatar } from "@/components/ui/primitives";
 import { navFor, type NavItem } from "@/lib/nav";
-import { signOut } from "@/lib/auth-actions";
 import type { Session } from "@/lib/session";
 
 function itemStyle(active: boolean, inert: boolean) {
@@ -79,6 +79,7 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
 
 export function Sidebar({ session }: { session: Session }) {
   const pathname = usePathname();
+  const { signOut } = useClerk();
   const groups = navFor(session.role);
 
   return (
@@ -148,31 +149,30 @@ export function Sidebar({ session }: { session: Session }) {
           </div>
           <Icon name="gear" size={17} c="var(--ink-3)" />
         </div>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rs-navitem"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 11,
-              width: "100%",
-              padding: "9px 10px",
-              marginTop: 2,
-              cursor: "pointer",
-              borderRadius: 11,
-              border: "none",
-              background: "transparent",
-              color: "var(--ink-2)",
-              fontFamily: "var(--ui)",
-              fontWeight: 600,
-              fontSize: 14,
-            }}
-          >
-            <Icon name="logout" size={18} c="var(--ink-3)" />
-            <span>Sign out</span>
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={() => signOut({ redirectUrl: "/login" })}
+          className="rs-navitem"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 11,
+            width: "100%",
+            padding: "9px 10px",
+            marginTop: 2,
+            cursor: "pointer",
+            borderRadius: 11,
+            border: "none",
+            background: "transparent",
+            color: "var(--ink-2)",
+            fontFamily: "var(--ui)",
+            fontWeight: 600,
+            fontSize: 14,
+          }}
+        >
+          <Icon name="logout" size={18} c="var(--ink-3)" />
+          <span>Sign out</span>
+        </button>
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useSignIn } from "@clerk/nextjs";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { RSLogo, Avatar } from "@/components/ui/primitives";
-import { signIn, type SignInState } from "@/lib/auth-actions";
 
 const SLIDES = [
   {
@@ -251,8 +251,13 @@ function Input({
   );
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({
+  pending,
+  label,
+}: {
+  pending: boolean;
+  label: string;
+}) {
   return (
     <button
       type="submit"
@@ -291,17 +296,180 @@ function SubmitButton() {
         />
       ) : (
         <>
-          Sign in <Icon name="arrowUR" size={17} c="#fff" />
+          {label} <Icon name="arrowUR" size={17} c="#fff" />
         </>
       )}
     </button>
   );
 }
 
+/** Which of the three panes the right-hand column is showing. */
+type Mode = "signin" | "forgot" | "reset";
+
+const COPY: Record<Mode, { title: string; blurb: string; cta: string }> = {
+  signin: {
+    title: "Welcome back",
+    blurb: "Sign in to your Rockstar studio.",
+    cta: "Sign in",
+  },
+  forgot: {
+    title: "Reset your password",
+    blurb: "We’ll email you a code to set a new one.",
+    cta: "Send code",
+  },
+  reset: {
+    title: "Choose a new password",
+    blurb: "Enter the code we emailed you, then pick a new password.",
+    cta: "Reset password",
+  },
+};
+
 export function LoginScreen() {
-  const [state, formAction] = useActionState<SignInState, FormData>(signIn, {});
+  // Clerk v7's signals API: `signIn` is null until the client loads, methods
+  // return `{ error }` rather than throwing, and status is read off the resource.
+  const { signIn } = useSignIn();
+  const router = useRouter();
+
+  const [mode, setMode] = useState<Mode>("signin");
   const [show, setShow] = useState(false);
-  const [remember, setRemember] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [email, setEmail] = useState("");
+
+  const fail = (err: { longMessage?: string; message?: string }, fallback: string) => {
+    setError(err.longMessage ?? err.message ?? fallback);
+    setPending(false);
+  };
+
+  const goTo = (next: Mode) => {
+    // reset() clears Clerk's in-flight attempt so a half-finished reset doesn't
+    // leak into the next one.
+    signIn?.reset();
+    setMode(next);
+    setError("");
+    setNotice("");
+    setShow(false);
+  };
+
+  /** Shared tail: a complete sign-in becomes an active session. */
+  const finalize = async () => {
+    if (!signIn) return;
+    const { error: finalizeError } = await signIn.finalize();
+    if (finalizeError) {
+      fail(finalizeError, "We couldn't start your session.");
+      return;
+    }
+    // "/" fans out to the right dashboard once the role is read from Supabase.
+    router.push("/");
+  };
+
+  const onSignIn = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!signIn || pending) return;
+
+    const form = new FormData(e.currentTarget);
+    const identifier = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+
+    setPending(true);
+    setError("");
+
+    const { error: passwordError } = await signIn.password({
+      identifier,
+      password,
+    });
+    if (passwordError) {
+      fail(passwordError, "We couldn't sign you in.");
+      return;
+    }
+
+    if (signIn.status !== "complete") {
+      // Second factor, forced password reset, etc. Say so rather than hang.
+      setError(
+        `Additional verification is needed to finish signing in (${signIn.status}).`,
+      );
+      setPending(false);
+      return;
+    }
+
+    await finalize();
+  };
+
+  const onSendCode = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!signIn || pending) return;
+
+    const identifier = String(
+      new FormData(e.currentTarget).get("email") ?? "",
+    ).trim();
+
+    setPending(true);
+    setError("");
+
+    // sendCode() has no params — it mails the identifier on the current
+    // attempt, so the attempt has to exist first.
+    const { error: createError } = await signIn.create({ identifier });
+    if (createError) {
+      fail(createError, "We couldn't find that account.");
+      return;
+    }
+
+    const { error: sendError } = await signIn.resetPasswordEmailCode.sendCode();
+    if (sendError) {
+      fail(sendError, "We couldn't send a reset code.");
+      return;
+    }
+
+    setEmail(identifier);
+    setNotice(`We emailed a code to ${identifier}.`);
+    setMode("reset");
+    setPending(false);
+  };
+
+  const onResetPassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!signIn || pending) return;
+
+    const form = new FormData(e.currentTarget);
+    const code = String(form.get("code") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+
+    setPending(true);
+    setError("");
+
+    const { error: verifyError } =
+      await signIn.resetPasswordEmailCode.verifyCode({ code });
+    if (verifyError) {
+      fail(verifyError, "That code wasn't right.");
+      return;
+    }
+
+    const { error: submitError } =
+      await signIn.resetPasswordEmailCode.submitPassword({ password });
+    if (submitError) {
+      fail(submitError, "We couldn't set that password.");
+      return;
+    }
+
+    if (signIn.status !== "complete") {
+      setError(
+        `Password reset, but more verification is needed (${signIn.status}).`,
+      );
+      setPending(false);
+      return;
+    }
+
+    await finalize();
+  };
+
+  const copy = COPY[mode];
+  const onSubmit =
+    mode === "signin"
+      ? onSignIn
+      : mode === "forgot"
+        ? onSendCode
+        : onResetPassword;
 
   return (
     <div
@@ -327,7 +495,11 @@ export function LoginScreen() {
           background: "var(--paper)",
         }}
       >
-        <form action={formAction} style={{ width: "100%", maxWidth: 372 }}>
+        <form
+          key={mode}
+          onSubmit={onSubmit}
+          style={{ width: "100%", maxWidth: 372 }}
+        >
           <h1
             className="rs-display"
             style={{
@@ -337,7 +509,7 @@ export function LoginScreen() {
               letterSpacing: "-.02em",
             }}
           >
-            Welcome back
+            {copy.title}
           </h1>
           <p
             style={{
@@ -346,50 +518,85 @@ export function LoginScreen() {
               fontSize: 14.5,
             }}
           >
-            Sign in to your Rockstar studio.
+            {copy.blurb}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <Input
-              label="Email"
-              name="email"
-              type="email"
-              icon="mail"
-              placeholder="you@studio.co"
-              autoComplete="username"
-              defaultValue="rae@maisonatelier.co"
-            />
-            <Input
-              label="Password"
-              name="password"
-              type={show ? "text" : "password"}
-              icon="lock"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              trailing={
-                <button
-                  type="button"
-                  onClick={() => setShow((s) => !s)}
-                  title={show ? "Hide" : "Show"}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    padding: 4,
-                    display: "flex",
-                  }}
-                >
-                  <Icon
-                    name="eye"
-                    size={18}
-                    c={show ? "var(--clay)" : "var(--ink-3)"}
-                  />
-                </button>
-              }
-            />
+            {mode !== "reset" && (
+              <Input
+                label="Email"
+                name="email"
+                type="email"
+                icon="mail"
+                placeholder="you@studio.co"
+                autoComplete="username"
+                defaultValue={email}
+              />
+            )}
+
+            {mode === "reset" && (
+              <Input
+                label="Reset code"
+                name="code"
+                type="text"
+                icon="mail"
+                placeholder="123456"
+                autoComplete="one-time-code"
+              />
+            )}
+
+            {mode !== "forgot" && (
+              <Input
+                label={mode === "reset" ? "New password" : "Password"}
+                name="password"
+                type={show ? "text" : "password"}
+                icon="lock"
+                placeholder="••••••••"
+                autoComplete={
+                  mode === "reset" ? "new-password" : "current-password"
+                }
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => setShow((s) => !s)}
+                    title={show ? "Hide" : "Show"}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      padding: 4,
+                      display: "flex",
+                    }}
+                  >
+                    <Icon
+                      name="eye"
+                      size={18}
+                      c={show ? "var(--clay)" : "var(--ink-3)"}
+                    />
+                  </button>
+                }
+              />
+            )}
           </div>
 
-          {state.error && (
+          {notice && (
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#3E6B4A",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
+              <Icon name="check" size={15} c="var(--leaf)" />
+              {notice}
+            </div>
+          )}
+
+          {error && (
             <div
               style={{
                 marginTop: 12,
@@ -402,87 +609,42 @@ export function LoginScreen() {
               }}
             >
               <Icon name="x" size={15} c="var(--clay)" />
-              {state.error}
+              {error}
             </div>
           )}
 
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: mode === "signin" ? "flex-end" : "flex-start",
               margin: "16px 0 22px",
             }}
           >
             <button
               type="button"
-              onClick={() => setRemember((r) => !r)}
+              onClick={() => goTo(mode === "signin" ? "forgot" : "signin")}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: 9,
+                gap: 6,
                 border: "none",
                 background: "transparent",
-                cursor: "pointer",
                 padding: 0,
+                cursor: "pointer",
                 fontFamily: "var(--ui)",
-              }}
-            >
-              <span
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 6,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: remember ? "var(--clay)" : "var(--surface)",
-                  boxShadow: remember
-                    ? "none"
-                    : "inset 0 0 0 1.5px var(--line-2)",
-                }}
-              >
-                {remember && <Icon name="check" size={13} c="#fff" sw={2.6} />}
-              </span>
-              <span
-                style={{
-                  fontSize: 13.5,
-                  color: "var(--ink-2)",
-                  fontWeight: 600,
-                }}
-              >
-                Remember me
-              </span>
-            </button>
-            <span
-              style={{
                 fontSize: 13.5,
                 fontWeight: 700,
                 color: "var(--clay)",
               }}
             >
-              Forgot password?
-            </span>
+              {mode !== "signin" && (
+                <Icon name="arrowL" size={15} c="var(--clay)" />
+              )}
+              {mode === "signin" ? "Forgot password?" : "Back to sign in"}
+            </button>
           </div>
 
-          <SubmitButton />
-
-          <p
-            style={{
-              textAlign: "center",
-              margin: "26px 0 0",
-              fontSize: 12.5,
-              color: "var(--ink-3)",
-              lineHeight: 1.6,
-            }}
-          >
-            Demo accounts — any password works
-            <br />
-            <b style={{ color: "var(--ink-2)" }}>rae@maisonatelier.co</b>{" "}
-            (educator) ·{" "}
-            <b style={{ color: "var(--ink-2)" }}>admin@rockstar.co</b> (admin)
-          </p>
+          <SubmitButton pending={pending || !signIn} label={copy.cta} />
         </form>
       </div>
     </div>

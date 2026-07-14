@@ -1,52 +1,70 @@
-import { cookies } from "next/headers";
+import { cache } from "react";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { createSupabaseServerClient } from "./supabase";
 
 export type Role = "admin" | "educator";
 
 export type Session = {
-  email: string;
+  clerkUserId: string;
   name: string;
-  title: string;
+  email: string;
   role: Role;
 };
 
-export const SESSION_COOKIE = "rs_session";
+/**
+ * "signed-out" and "no-role" are deliberately distinct: the first means no
+ * Clerk session (→ /login), the second means a valid Clerk user with no row in
+ * the Supabase `users` table (→ /no-access). Roles are provisioned out of band;
+ * a missing row never grants access.
+ */
+export type AuthState =
+  | { status: "signed-out" }
+  | { status: "no-role" }
+  | { status: "ok"; session: Session };
+
+function isRole(value: unknown): value is Role {
+  return value === "admin" || value === "educator";
+}
 
 /**
- * Demo directory. There is no auth backend yet, so sign-in matches an email
- * here and accepts any non-empty password. Swap this out for a real identity
- * provider before anything ships.
+ * Cached per request — the layout and the page it wraps both call this, and
+ * without `cache` that would be two Supabase round-trips per navigation.
  */
-const DEMO_USERS: Session[] = [
-  {
-    email: "rae@maisonatelier.co",
-    name: "Rae Mills",
-    title: "Master Colorist · Maison Atelier",
-    role: "educator",
-  },
-  {
-    email: "admin@rockstar.co",
-    name: "Avery Stone",
-    title: "Platform Admin",
-    role: "admin",
-  },
-];
+export const getAuthState = cache(async (): Promise<AuthState> => {
+  const { userId } = await auth();
+  if (!userId) return { status: "signed-out" };
 
-export function findDemoUser(email: string): Session | undefined {
-  const needle = email.trim().toLowerCase();
-  return DEMO_USERS.find((u) => u.email === needle);
-}
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("role")
+    .eq("clerk_id", userId)
+    .maybeSingle();
 
-export async function getSession(): Promise<Session | null> {
-  const store = await cookies();
-  const raw = store.get(SESSION_COOKIE)?.value;
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Session;
-    return findDemoUser(parsed.email) ?? null;
-  } catch {
-    return null;
+  if (error) {
+    // Most often an RLS/claims misconfiguration rather than a real "no access".
+    console.error("[auth] Supabase role lookup failed:", error.message);
+    return { status: "no-role" };
   }
-}
+
+  if (!data || !isRole(data.role)) return { status: "no-role" };
+
+  const user = await currentUser();
+  const name =
+    user?.fullName ??
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
+  const email = user?.primaryEmailAddress?.emailAddress ?? "";
+
+  return {
+    status: "ok",
+    session: {
+      clerkUserId: userId,
+      name: name || email || "Account",
+      email,
+      role: data.role,
+    },
+  };
+});
 
 export function homeFor(role: Role): string {
   return role === "admin" ? "/admin" : "/educator";
