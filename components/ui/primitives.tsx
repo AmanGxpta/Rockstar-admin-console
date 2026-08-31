@@ -1,19 +1,29 @@
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 import { Icon, type IconName } from "./icon";
 
+/**
+ * Main's brand has no supplied logo asset, so the mark is drawn rather than
+ * imported — unlike the white-label build's RSLogo, which renders
+ * public/logo.svg. Keep this function's body branch-specific when merging;
+ * every call site only ever passes `size`, so the two implementations can
+ * diverge freely without touching call sites.
+ */
 export function RSLogo({
   size = 22,
   color = "var(--ink)",
   mark = "var(--clay)",
   wordmark = true,
+  style,
 }: {
   size?: number;
   color?: string;
   mark?: string;
   wordmark?: boolean;
+  style?: CSSProperties;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: size * 0.36 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: size * 0.36, ...style }}>
       <svg
         width={size * 1.04}
         height={size * 1.04}
@@ -29,7 +39,7 @@ export function RSLogo({
       {wordmark && (
         <span
           style={{
-            fontFamily: "var(--display)",
+            fontFamily: "var(--font-head)",
             fontWeight: 800,
             fontSize: size,
             color,
@@ -43,12 +53,7 @@ export function RSLogo({
   );
 }
 
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#E2858A,#C75C3C)",
-  "linear-gradient(135deg,#CF9A47,#C75C3C)",
-  "linear-gradient(135deg,#9A5B7A,#E2858A)",
-  "linear-gradient(135deg,#5E8C6A,#CF9A47)",
-];
+const AVATAR_TONES = ["var(--dark-3)", "var(--dark-4)", "var(--red-faint)"];
 
 export function Avatar({
   name,
@@ -62,24 +67,28 @@ export function Avatar({
   const initials = name
     .split(" ")
     .map((w) => w[0])
+    .filter(Boolean)
     .slice(0, 2)
-    .join("");
-  const gradient =
-    AVATAR_GRADIENTS[(name.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length];
+    .join("")
+    .toUpperCase();
+  const tone = AVATAR_TONES[(name.charCodeAt(0) || 0) % AVATAR_TONES.length];
   return (
     <div
       style={{
         width: size,
         height: size,
         borderRadius: 999,
-        background: gradient,
+        background: tone,
+        border: "0.5px solid var(--border-mid)",
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#fff",
-        fontWeight: 700,
-        fontSize: size * 0.38,
+        color: "var(--text-primary)",
+        fontFamily: "var(--font-word)",
+        fontWeight: 300,
+        fontSize: size * 0.36,
+        letterSpacing: "0.02em",
         ...style,
       }}
     >
@@ -88,41 +97,56 @@ export function Avatar({
   );
 }
 
-export type Tone = "clay" | "gold" | "leaf" | "rose" | "berry" | "ink";
+export type BadgeTone = "active" | "complete" | "locked" | "warn" | "neutral";
 
-const TONES: Record<Tone, [string, string]> = {
-  clay: ["var(--clay-tint)", "var(--clay-deep)"],
-  gold: ["var(--gold-tint)", "#9A6E22"],
-  leaf: ["var(--leaf-tint)", "#3E6B4A"],
-  rose: ["var(--rose-tint)", "#B45561"],
-  berry: ["var(--berry-tint)", "#7A4460"],
-  ink: ["var(--paper-2)", "var(--ink-2)"],
+const BADGE_TONES: Record<BadgeTone, { bg: string; fg: string; dot?: string }> = {
+  active: { bg: "var(--danger-bg)", fg: "#E06060", dot: "#E06060" },
+  complete: { bg: "var(--success-bg)", fg: "var(--success)", dot: "var(--success)" },
+  locked: { bg: "rgba(240,237,232,0.07)", fg: "var(--text-muted)", dot: "var(--text-muted)" },
+  warn: { bg: "var(--warn-bg)", fg: "var(--warn)", dot: "var(--warn)" },
+  neutral: { bg: "var(--dark-3)", fg: "var(--text-secondary)" },
 };
 
-export function Tag({
+export function Badge({
   children,
-  tone = "clay",
+  tone = "neutral",
+  dot = true,
 }: {
   children: ReactNode;
-  tone?: Tone;
+  tone?: BadgeTone;
+  dot?: boolean;
 }) {
-  const [bg, fg] = TONES[tone];
+  const t = BADGE_TONES[tone];
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 5,
-        padding: "4px 10px",
+        gap: 6,
         borderRadius: 999,
-        fontWeight: 700,
-        fontSize: 10.5,
-        letterSpacing: ".01em",
-        background: bg,
-        color: fg,
+        fontFamily: "var(--font-word)",
+        fontWeight: 300,
+        fontSize: 10,
+        letterSpacing: "0.14em",
+        textTransform: "uppercase",
+        padding: "4px 12px",
+        background: t.bg,
+        color: t.fg,
+        border: tone === "neutral" ? "0.5px solid var(--border-mid)" : "none",
         whiteSpace: "nowrap",
       }}
     >
+      {dot && t.dot && (
+        <span
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: t.dot,
+            flexShrink: 0,
+          }}
+        />
+      )}
       {children}
     </span>
   );
@@ -130,9 +154,9 @@ export function Tag({
 
 export function ProgressBar({
   value = 50,
-  h = 8,
-  c = "var(--clay)",
-  track = "var(--paper-2)",
+  h = 3,
+  c = "var(--red)",
+  track = "var(--dark-3)",
 }: {
   value?: number;
   h?: number;
@@ -162,13 +186,19 @@ export function ProgressBar({
 }
 
 const BTN_KINDS = {
-  primary: { background: "var(--clay)", color: "#fff" },
+  primary: { background: "var(--red)", color: "var(--cream)" },
   ghost: {
-    background: "var(--surface)",
-    color: "var(--ink)",
-    boxShadow: "inset 0 0 0 1.5px var(--line-2)",
+    background: "transparent",
+    color: "var(--text-primary)",
+    border: "0.5px solid var(--border-strong)",
   },
-  soft: { background: "var(--clay-tint)", color: "var(--clay-deep)" },
+  text: { background: "transparent", color: "var(--red)", padding: "12px 2px" },
+} as const;
+
+const BTN_CLASS = {
+  primary: "rs-btn-primary",
+  ghost: "rs-btn-ghost",
+  text: "",
 } as const;
 
 export function WBtn({
@@ -176,35 +206,47 @@ export function WBtn({
   kind = "primary",
   icon,
   sm,
+  type = "button",
   style,
+  onClick,
+  disabled,
 }: {
   children: ReactNode;
   kind?: keyof typeof BTN_KINDS;
   icon?: IconName;
   sm?: boolean;
+  type?: "button" | "submit";
   style?: CSSProperties;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
-      type="button"
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={BTN_CLASS[kind]}
       style={{
-        height: sm ? 34 : 40,
-        padding: `0 ${sm ? 14 : 18}px`,
-        borderRadius: 10,
-        border: "none",
-        cursor: "pointer",
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
-        fontFamily: "var(--ui)",
-        fontWeight: 700,
-        fontSize: sm ? 13 : 14,
+        borderRadius: "var(--r-sm)",
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        fontFamily: "var(--font-word)",
+        fontWeight: 200,
+        fontSize: sm ? 10 : 11,
+        letterSpacing: sm ? "0.14em" : "0.16em",
+        textTransform: "uppercase",
         whiteSpace: "nowrap",
+        padding: sm ? "9px 18px" : "13px 28px",
+        transition: "background 0.18s, border-color 0.18s, opacity 0.18s",
+        opacity: disabled ? 0.5 : 1,
         ...BTN_KINDS[kind],
         ...style,
       }}
     >
-      {icon && <Icon name={icon} size={sm ? 15 : 17} />}
+      {icon && <Icon name={icon} size={sm ? 14 : 15} />}
       {children}
     </button>
   );
@@ -222,9 +264,9 @@ export function Card({
   return (
     <div
       style={{
-        background: "var(--surface)",
-        borderRadius: 18,
-        boxShadow: "var(--sh-1)",
+        background: "var(--dark-2)",
+        border: "0.5px solid var(--border)",
+        borderRadius: "var(--r-card)",
         padding: pad,
         ...style,
       }}
@@ -240,14 +282,12 @@ export function KPI({
   value,
   delta,
   up = true,
-  tone = "clay",
 }: {
   icon: IconName;
   label: string;
   value: string;
   delta?: string;
   up?: boolean;
-  tone?: Exclude<Tone, "ink">;
 }) {
   return (
     <Card style={{ flex: 1 }}>
@@ -260,23 +300,23 @@ export function KPI({
       >
         <div
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 11,
-            background: `var(--${tone}-tint)`,
+            width: 36,
+            height: 36,
+            borderRadius: "var(--r-sm)",
+            background: "var(--dark-3)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Icon name={icon} size={19} c={`var(--${tone})`} />
+          <Icon name={icon} size={17} c="var(--red)" />
         </div>
         {delta && (
           <span
             style={{
               fontSize: 12,
-              fontWeight: 700,
-              color: up ? "var(--leaf)" : "var(--clay)",
+              fontWeight: 500,
+              color: up ? "var(--success)" : "var(--danger)",
               display: "inline-flex",
               alignItems: "center",
               gap: 3,
@@ -284,8 +324,8 @@ export function KPI({
           >
             <Icon
               name="arrowUR"
-              size={13}
-              c={up ? "var(--leaf)" : "var(--clay)"}
+              size={12}
+              c={up ? "var(--success)" : "var(--danger)"}
               style={{ transform: up ? "none" : "rotate(90deg)" }}
             />
             {delta}
@@ -294,16 +334,15 @@ export function KPI({
       </div>
       <div
         style={{
-          fontFamily: "var(--display)",
-          fontWeight: 800,
-          fontSize: 28,
+          fontFamily: "var(--font-head)",
+          fontWeight: 700,
+          fontSize: 26,
           marginTop: 14,
-          letterSpacing: "-.02em",
         }}
       >
         {value}
       </div>
-      <div style={{ fontSize: 12.5, color: "var(--ink-2)", fontWeight: 600 }}>
+      <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 2 }}>
         {label}
       </div>
     </Card>
@@ -323,17 +362,12 @@ export function SectionH({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: 14,
+        marginBottom: 16,
       }}
     >
       <h3
-        style={{
-          margin: 0,
-          fontFamily: "var(--display)",
-          fontWeight: 700,
-          fontSize: 16.5,
-          letterSpacing: "-.01em",
-        }}
+        className="rs-head"
+        style={{ margin: 0, fontSize: 17 }}
       >
         {children}
       </h3>
@@ -352,19 +386,19 @@ export function Table({ cols, rows }: { cols: Col[]; rows: ReactNode[][] }) {
         style={{
           display: "flex",
           padding: "0 16px 12px",
-          borderBottom: "1px solid var(--line)",
+          borderBottom: "0.5px solid var(--border-mid)",
         }}
       >
         {cols.map(([label, flex, align], i) => (
           <div
             key={i}
+            className="rs-word"
             style={{
               flex: flex ?? 1,
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: ".06em",
-              textTransform: "uppercase",
-              color: "var(--ink-3)",
+              fontSize: 10,
+              fontWeight: 200,
+              letterSpacing: "0.12em",
+              color: "var(--text-muted)",
               textAlign: align ?? "left",
             }}
           >
@@ -375,12 +409,13 @@ export function Table({ cols, rows }: { cols: Col[]; rows: ReactNode[][] }) {
       {rows.map((row, i) => (
         <div
           key={i}
+          className="rs-row"
           style={{
             display: "flex",
             alignItems: "center",
             padding: "13px 16px",
             borderBottom:
-              i < rows.length - 1 ? "1px solid var(--line)" : "none",
+              i < rows.length - 1 ? "0.5px solid var(--border)" : "none",
           }}
         >
           {row.map((cell, j) => (
@@ -389,6 +424,7 @@ export function Table({ cols, rows }: { cols: Col[]; rows: ReactNode[][] }) {
               style={{
                 flex: cols[j][1] ?? 1,
                 fontSize: 13.5,
+                color: "var(--text-secondary)",
                 textAlign: cols[j][2] ?? "left",
                 minWidth: 0,
               }}
@@ -398,6 +434,242 @@ export function Table({ cols, rows }: { cols: Col[]; rows: ReactNode[][] }) {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Module-card pattern from the style guide, reused for any list of
+ * course-like items (a course, a module, a submission). */
+export function ItemCard({
+  eyebrow,
+  title,
+  description,
+  footer,
+  tone = "default",
+  href,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  footer?: ReactNode;
+  tone?: "default" | "active" | "locked";
+  href?: string;
+}) {
+  const style: CSSProperties = {
+    display: "block",
+    background: tone === "active" ? "rgba(140,26,26,0.06)" : "var(--dark-2)",
+    border: `0.5px solid ${tone === "active" ? "var(--red-muted)" : "var(--border)"}`,
+    borderRadius: "var(--r-card)",
+    padding: "22px 26px",
+    marginBottom: 10,
+    opacity: tone === "locked" ? 0.5 : 1,
+    textDecoration: "none",
+    color: "inherit",
+  };
+
+  const content = (
+    <>
+      {eyebrow && (
+        <div className="rs-label" style={{ marginBottom: 6 }}>
+          {eyebrow}
+        </div>
+      )}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div className="rs-head" style={{ fontSize: 17, lineHeight: 1.25 }}>
+          {title}
+        </div>
+      </div>
+      {description && (
+        <div
+          style={{
+            fontSize: 13,
+            color: "var(--text-secondary)",
+            lineHeight: 1.55,
+            marginTop: 6,
+          }}
+        >
+          {description}
+        </div>
+      )}
+      {footer && (
+        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 16 }}>
+          {footer}
+        </div>
+      )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} style={style} className="rs-row">
+        {content}
+      </Link>
+    );
+  }
+  return <div style={style}>{content}</div>;
+}
+
+export function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label style={{ display: "block", marginBottom: 16 }}>
+      <div className="rs-label" style={{ marginBottom: 8 }}>
+        {label}
+      </div>
+      {children}
+    </label>
+  );
+}
+
+export function TextInput({
+  name,
+  type = "text",
+  placeholder,
+  defaultValue,
+}: {
+  name?: string;
+  type?: string;
+  placeholder?: string;
+  defaultValue?: string;
+}) {
+  return (
+    <input
+      name={name}
+      type={type}
+      placeholder={placeholder}
+      defaultValue={defaultValue}
+      style={{
+        width: "100%",
+        background: "var(--dark-2)",
+        border: "0.5px solid var(--border-mid)",
+        borderRadius: "var(--r-sm)",
+        padding: "13px 16px",
+        color: "var(--text-primary)",
+        fontFamily: "var(--font-body)",
+        fontSize: 14,
+        outline: "none",
+      }}
+      className="rs-input"
+    />
+  );
+}
+
+export function Textarea({
+  name,
+  placeholder,
+  rows = 4,
+}: {
+  name?: string;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <textarea
+      name={name}
+      placeholder={placeholder}
+      rows={rows}
+      style={{
+        width: "100%",
+        background: "var(--dark-2)",
+        border: "0.5px solid var(--border-mid)",
+        borderRadius: "var(--r-sm)",
+        padding: "13px 16px",
+        color: "var(--text-primary)",
+        fontFamily: "var(--font-body)",
+        fontSize: 14,
+        outline: "none",
+        resize: "vertical",
+      }}
+      className="rs-input"
+    />
+  );
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  width = 480,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  width?: number;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 100,
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: width,
+          background: "var(--dark-2)",
+          border: "0.5px solid var(--border-mid)",
+          borderRadius: "var(--r-card)",
+          padding: 28,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+          }}
+        >
+          <h3 className="rs-head" style={{ margin: 0, fontSize: 19 }}>
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              padding: 4,
+              display: "flex",
+            }}
+          >
+            <Icon name="x" size={18} c="var(--text-muted)" />
+          </button>
+        </div>
+        {children}
+        {footer && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              marginTop: 24,
+            }}
+          >
+            {footer}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

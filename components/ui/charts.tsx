@@ -1,12 +1,15 @@
 /**
  * SVG chart primitives. These render on the server, so the gradient `id` is
  * passed in rather than generated — two Areas on one page must not collide.
+ * Palette is intentionally narrow: red is the only brand accent, so
+ * secondary series fall back to neutral cream/border tones rather than
+ * introducing new hues.
  */
 
 export function Bars({
   data,
   h = 150,
-  c = "var(--clay)",
+  c = "var(--red)",
   labels,
 }: {
   data: number[];
@@ -32,8 +35,8 @@ export function Bars({
             <div
               style={{
                 height: `${(v / max) * 100}%`,
-                background: i === data.length - 1 ? c : "var(--clay-tint)",
-                borderRadius: "7px 7px 3px 3px",
+                background: i === data.length - 1 ? c : "var(--dark-4)",
+                borderRadius: "3px 3px 1px 1px",
                 minHeight: 4,
               }}
             />
@@ -49,8 +52,7 @@ export function Bars({
                 flex: 1,
                 textAlign: "center",
                 fontSize: 10.5,
-                color: "var(--ink-3)",
-                fontWeight: 600,
+                color: "var(--text-muted)",
               }}
             >
               {l}
@@ -67,7 +69,7 @@ export function Area({
   data,
   w = 520,
   h = 140,
-  c = "#C75C3C",
+  c = "var(--red)",
 }: {
   id: string;
   data: number[];
@@ -104,11 +106,11 @@ export function Area({
         d={line}
         fill="none"
         stroke={c}
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx={last[0]} cy={last[1]} r="4" fill={c} stroke="#fff" strokeWidth="2" />
+      <circle cx={last[0]} cy={last[1]} r="3.5" fill="var(--dark)" stroke={c} strokeWidth="2" />
     </svg>
   );
 }
@@ -117,7 +119,7 @@ export function Area({
 export function Donut({
   segs,
   size = 132,
-  sw = 18,
+  sw = 16,
 }: {
   segs: [number, string][];
   size?: number;
@@ -140,6 +142,14 @@ export function Donut({
 
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="var(--dark-3)"
+        strokeWidth={sw}
+      />
       {arcs.map(({ len, offset, color }, i) => (
         <circle
           key={i}

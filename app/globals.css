@@ -1,45 +1,95 @@
 @import "tailwindcss";
 
-/* Rockstar — design system tokens & base
-   Micro-learning for hairdressers & artists.
-   Clean & friendly · light-first · warm beauty tones (clay / rose / gold)
-   Fonts come from next/font in app/layout.tsx, which supplies
-   --font-display and --font-ui. */
+/* Rockstar Studio design system tokens and base styles.
+   Micro-learning for hairdressers and artists.
+   Clean and friendly, light-first, warm beauty tones: clay, rose, gold.
+
+   Several token names below (dark, red, cream, text and border families)
+   are shared with the white-label build on the stripped branch: every
+   component under components/ui and components/shell reads through those
+   same names, so the two brands run identical component code and diverge
+   only in this file's values. A token named "dark" holding a light paper
+   color is an odd fit for this brand; that is the price of keeping this
+   file the only one that differs between branches on merge. Worth a
+   neutral rename on both branches together at some point, not attempted
+   here to keep this change scoped to one file.
+
+   Fonts come from next/font in app/layout.tsx, which supplies the display
+   font (Bricolage Grotesque) and the ui font (Hanken Grotesk). This brand
+   only has two font families, so the word and body font roles below both
+   alias the ui font, and the head role aliases the display font. */
 
 :root {
-  /* warm neutrals */
-  --paper: #fbf7f3; /* app background */
-  --paper-2: #f4ece4; /* sunk panels */
+  /* warm neutrals (source of truth for this brand's palette) */
+  --paper: #fbf7f3;
+  --paper-2: #f4ece4;
   --surface: #ffffff;
-  --ink: #2a211c; /* warm near-black */
-  --ink-2: #7c6c61; /* muted text */
-  --ink-3: #ac9c90; /* faint text / icons */
-  --line: #ede3d9; /* hairlines */
+  --ink: #2a211c;
+  --ink-2: #7c6c61;
+  --ink-3: #ac9c90;
+  --line: #ede3d9;
   --line-2: #e3d6c9;
 
-  /* brand */
-  --clay: #c75c3c; /* primary — terracotta */
+  --clay: #c75c3c;
   --clay-deep: #a8452a;
+  --clay-muted: #8a3a26;
   --clay-tint: #f8e7df;
-  --rose: #e2858a; /* secondary */
+  --rose: #e2858a;
   --rose-tint: #fbe7e7;
-  --gold: #cf9a47; /* premium / certification */
+  --gold: #cf9a47;
   --gold-tint: #f6ead2;
-  --leaf: #5e8c6a; /* success / pass */
+  --leaf: #5e8c6a;
   --leaf-tint: #e4efe5;
-  --berry: #9a5b7a; /* community / accent */
+  --berry: #9a5b7a;
   --berry-tint: #f3e6ee;
+  --danger-red: #c94444;
+  --danger-red-tint: #f8e3e3;
 
-  /* type */
   --display: var(--font-display), system-ui, sans-serif;
   --ui: var(--font-ui), system-ui, sans-serif;
 
-  /* radii */
-  --r-card: 24px;
-  --r-md: 16px;
-  --r-sm: 12px;
+  /* shared contract components/ui and components/shell read through */
+  --dark: var(--paper); /* page background */
+  --dark-2: var(--surface); /* card / panel surfaces */
+  --dark-3: var(--paper-2); /* nested elements, wells, hover */
+  --dark-4: var(--line-2); /* deeper hover */
 
-  /* shadows — warm */
+  --red: var(--clay);
+  --red-hover: var(--clay-deep);
+  --red-muted: var(--clay-muted);
+  --red-faint: var(--clay-tint);
+
+  --cream: var(--paper-2);
+  --cream-2: var(--line);
+  --cream-3: var(--line-2);
+
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted: var(--ink-3);
+
+  --border: rgba(42, 33, 28, 0.08);
+  --border-mid: rgba(42, 33, 28, 0.14);
+  --border-strong: rgba(42, 33, 28, 0.24);
+
+  --success: var(--leaf);
+  --success-bg: var(--leaf-tint);
+  --danger: var(--danger-red);
+  --danger-bg: var(--danger-red-tint);
+  --warn: var(--gold);
+  --warn-bg: var(--gold-tint);
+
+  --font-word: var(--ui);
+  --font-head: var(--display);
+  --font-body: var(--ui);
+
+  /* radii — friendlier / rounder than the white-label build, on purpose */
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-card: 24px;
+
+  /* shadows — warm. Not currently applied by the shared component set
+     (the white-label style guide forbids shadows and the ported components
+     carry none), kept here in case this brand wants elevation back. */
   --sh-1: 0 1px 2px rgba(74, 46, 30, 0.05), 0 2px 8px rgba(74, 46, 30, 0.05);
   --sh-2: 0 6px 18px rgba(74, 46, 30, 0.08), 0 2px 6px rgba(74, 46, 30, 0.05);
   --sh-3: 0 18px 40px rgba(74, 46, 30, 0.14), 0 6px 14px rgba(74, 46, 30, 0.08);
@@ -50,8 +100,11 @@
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-clay: var(--clay);
-  --font-sans: var(--ui);
-  --font-display: var(--display);
+  --color-dark: var(--dark);
+  --color-cream: var(--cream);
+  --color-red: var(--red);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-head);
 }
 
 * {
@@ -65,37 +118,54 @@ body {
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--ui);
+  background: var(--dark);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 .rs,
 .rs * {
-  font-family: var(--ui);
+  font-family: var(--font-body);
 }
 
 .rs {
-  color: var(--ink);
+  color: var(--text-primary);
 }
 
-/* type helpers */
-.rs-display {
-  font-family: var(--display);
+/* ===== type helpers ===== */
+
+.rs-head {
+  font-family: var(--font-head);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.04;
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+
+.rs-word {
+  font-family: var(--font-word);
+  text-transform: uppercase;
 }
 
 .rs-eyebrow {
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-family: var(--font-word);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--red);
+}
+
+.rs-label {
+  font-family: var(--font-word);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* generic placeholder media (no photography yet) */
@@ -151,19 +221,41 @@ body {
 
 /* interactive states */
 .rs-navitem {
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
 }
 
 .rs-navitem:hover {
-  background: var(--paper-2);
+  background: var(--dark-3);
+  color: var(--text-primary);
+}
+
+.rs-row {
+  transition: background 0.18s;
 }
 
 .rs-row:hover {
-  background: var(--paper);
+  background: var(--dark-3);
+}
+
+.rs-iconbtn {
+  transition: border-color 0.18s, color 0.18s;
 }
 
 .rs-iconbtn:hover {
-  background: var(--paper-2);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.rs-btn-primary:hover {
+  background: var(--red-hover);
+}
+
+.rs-btn-ghost:hover {
+  border-color: var(--text-secondary);
+}
+
+.rs-input:focus-within {
+  border-color: var(--red) !important;
 }
 
 /* login */
