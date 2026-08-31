@@ -1,14 +1,7 @@
-import { redirect } from "next/navigation";
 import { WebShell } from "@/components/shell";
 import { Area, Bars, Donut } from "@/components/ui/charts";
-import {
-  Card,
-  KPI,
-  ProgressBar,
-  SectionH,
-  WBtn,
-} from "@/components/ui/primitives";
-import { getAuthState, homeFor } from "@/lib/session";
+import { Card, KPI, ProgressBar, SectionH, WBtn } from "@/components/ui/primitives";
+import { requireSession } from "@/lib/session";
 
 const ENGAGEMENT = [
   2400, 3100, 2800, 3600, 3300, 4200, 4800, 4600, 5400, 5900, 5600, 6400,
@@ -18,25 +11,22 @@ const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 ];
 
-const CATEGORIES: [string, number, string][] = [
-  ["Color & Balayage", 82, "#C75C3C"],
-  ["Cutting", 64, "#9A5B7A"],
-  ["Styling", 48, "#CF9A47"],
-  ["Barbering", 36, "#5E8C6A"],
-  ["Editorial", 22, "#E2858A"],
+const CATEGORIES: [string, number][] = [
+  ["Color & Balayage", 82],
+  ["Cutting", 64],
+  ["Barbering", 48],
+  ["Consultation", 36],
+  ["Editorial", 22],
 ];
 
 const DEVICES: [string, string, string][] = [
-  ["iOS", "68%", "#C75C3C"],
-  ["Android", "28%", "#E2858A"],
-  ["Web", "4%", "#EDE3D9"],
+  ["iOS", "68%", "var(--red)"],
+  ["Android", "28%", "var(--cream-3)"],
+  ["Web", "4%", "var(--dark-4)"],
 ];
 
 export default async function AdminDashboard() {
-  const state = await getAuthState();
-  if (state.status !== "ok") redirect("/");
-  const { session } = state;
-  if (session.role !== "admin") redirect(homeFor(session.role));
+  const session = await requireSession("admin");
 
   return (
     <WebShell
@@ -50,34 +40,10 @@ export default async function AdminDashboard() {
       }
     >
       <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-        <KPI
-          icon="users"
-          label="Active users"
-          value="8,412"
-          delta="11.4%"
-          tone="clay"
-        />
-        <KPI
-          icon="book"
-          label="Enrollments"
-          value="3,927"
-          delta="6.8%"
-          tone="berry"
-        />
-        <KPI
-          icon="check2"
-          label="Completion rate"
-          value="68%"
-          delta="3.1%"
-          tone="leaf"
-        />
-        <KPI
-          icon="award"
-          label="Certs issued"
-          value="1,204"
-          delta="18%"
-          tone="gold"
-        />
+        <KPI icon="users" label="Active users" value="8,412" delta="11.4%" />
+        <KPI icon="book" label="Enrollments" value="3,927" delta="6.8%" />
+        <KPI icon="check2" label="Completion rate" value="68%" delta="3.1%" />
+        <KPI icon="award" label="Certs issued" value="1,204" delta="18%" />
       </div>
 
       <div
@@ -97,16 +63,15 @@ export default async function AdminDashboard() {
                   alignItems: "center",
                   gap: 6,
                   fontSize: 12,
-                  fontWeight: 600,
-                  color: "var(--ink-2)",
+                  color: "var(--text-secondary)",
                 }}
               >
                 <span
                   style={{
-                    width: 9,
-                    height: 9,
-                    borderRadius: 3,
-                    background: "#C75C3C",
+                    width: 8,
+                    height: 8,
+                    borderRadius: 2,
+                    background: "var(--red)",
                   }}
                 />
                 Active users
@@ -126,7 +91,7 @@ export default async function AdminDashboard() {
             {MONTHS.map((m) => (
               <span
                 key={m}
-                style={{ fontSize: 10, color: "var(--ink-3)", fontWeight: 600 }}
+                style={{ fontSize: 10, color: "var(--text-muted)" }}
               >
                 {m}
               </span>
@@ -136,27 +101,23 @@ export default async function AdminDashboard() {
 
         <Card>
           <SectionH>Top categories</SectionH>
-          {CATEGORIES.map(([label, value, color]) => (
+          {CATEGORIES.map(([label, value]) => (
             <div key={label} style={{ marginBottom: 13 }}>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  marginBottom: 5,
+                  marginBottom: 6,
                 }}
               >
-                <span style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "var(--ink-2)",
-                  }}
-                >
+                <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>
+                  {label}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {value}%
                 </span>
               </div>
-              <ProgressBar value={value} h={7} c={color} />
+              <ProgressBar value={value} h={3} />
             </div>
           ))}
         </Card>
@@ -179,53 +140,26 @@ export default async function AdminDashboard() {
         </Card>
 
         <Card>
-          <div
-            style={{
-              fontSize: 12.5,
-              color: "var(--ink-2)",
-              fontWeight: 600,
-              marginBottom: 6,
-            }}
-          >
+          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 6 }}>
             Avg session
           </div>
-          <div
-            style={{
-              fontFamily: "var(--display)",
-              fontWeight: 800,
-              fontSize: 30,
-            }}
-          >
+          <div style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 28 }}>
             14m 20s
           </div>
           <div
             style={{
               fontSize: 12,
-              color: "var(--leaf)",
-              fontWeight: 700,
+              color: "var(--success)",
               marginTop: 4,
-              marginBottom: 14,
+              marginBottom: 16,
             }}
           >
             ↑ 2m vs last month
           </div>
-          <div
-            style={{
-              fontSize: 12.5,
-              color: "var(--ink-2)",
-              fontWeight: 600,
-              marginBottom: 6,
-            }}
-          >
+          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 6 }}>
             Clips watched / user
           </div>
-          <div
-            style={{
-              fontFamily: "var(--display)",
-              fontWeight: 800,
-              fontSize: 30,
-            }}
-          >
+          <div style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 28 }}>
             38
           </div>
         </Card>
@@ -235,12 +169,12 @@ export default async function AdminDashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <Donut
               segs={[
-                [68, "#C75C3C"],
-                [28, "#E2858A"],
-                [4, "#EDE3D9"],
+                [68, "var(--red)"],
+                [28, "var(--cream-3)"],
+                [4, "var(--dark-4)"],
               ]}
               size={110}
-              sw={16}
+              sw={14}
             />
             <div>
               {DEVICES.map(([label, value, color]) => (
@@ -255,23 +189,22 @@ export default async function AdminDashboard() {
                 >
                   <div
                     style={{
-                      width: 9,
-                      height: 9,
-                      borderRadius: 3,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 2,
                       background: color,
                     }}
                   />
                   <span
                     style={{
                       fontSize: 12,
-                      color: "var(--ink-2)",
-                      fontWeight: 600,
+                      color: "var(--text-secondary)",
                       width: 54,
                     }}
                   >
                     {label}
                   </span>
-                  <b style={{ fontSize: 12 }}>{value}</b>
+                  <b style={{ fontSize: 12, fontWeight: 500 }}>{value}</b>
                 </div>
               ))}
             </div>
