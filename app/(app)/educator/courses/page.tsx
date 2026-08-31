@@ -1,60 +1,84 @@
+import Link from "next/link";
+
 import { WebShell } from "@/components/shell";
-import { Badge, ItemCard, WBtn, type BadgeTone } from "@/components/ui/primitives";
+import { Badge, ItemCard, WBtn } from "@/components/ui/primitives";
+import { formatDuration, listCourses } from "@/lib/courses";
 import { requireSession } from "@/lib/session";
-import { COURSES, formatMoney } from "@/lib/seed-data";
 
-// Hardcoded until Clerk users are linked to educator records in Supabase.
-const CURRENT_EDUCATOR_ID = "ed-1";
-
-const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
-  live: { label: "Live", tone: "complete" },
-  pending: { label: "Pending review", tone: "warn" },
-  draft: { label: "Draft", tone: "locked" },
-  archived: { label: "Archived", tone: "locked" },
-};
+const muted = {
+  fontSize: 10,
+  letterSpacing: "0.12em",
+  color: "var(--text-muted)",
+} as const;
 
 export default async function EducatorCourses() {
   const session = await requireSession("educator");
-  const courses = COURSES.filter((c) => c.educatorId === CURRENT_EDUCATOR_ID);
+
+  // No educator filter: the RLS policy on `courses` already narrows this to
+  // the ones this account authors. Filtering again here would be a second,
+  // divergent copy of that rule.
+  const courses = await listCourses();
 
   return (
     <WebShell
       session={session}
       title="Courses"
-      sub={`${courses.length} courses`}
-      actions={<WBtn icon="plus">New course</WBtn>}
+      sub={`${courses.length} ${courses.length === 1 ? "course" : "courses"}`}
+      actions={
+        <Link href="/educator/courses/new" style={{ textDecoration: "none" }}>
+          <WBtn icon="plus">New course</WBtn>
+        </Link>
+      }
     >
-      {courses.map((course) => {
-        const status = STATUS_BADGE[course.status];
-        const totalMin = course.modules.reduce((a, m) => a + m.minutes, 0);
-        return (
-          <ItemCard
-            key={course.id}
-            href={`/educator/courses/${course.id}`}
-            eyebrow={course.category}
-            title={
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <span>{course.title}</span>
-                <Badge tone={status.tone}>{status.label}</Badge>
-              </div>
-            }
-            description={course.description}
-            footer={
-              <>
-                <span className="rs-word" style={{ fontSize: 10, letterSpacing: "0.12em", color: "var(--text-muted)" }}>
-                  {course.modules.length} modules · {totalMin} min
-                </span>
-                <span className="rs-word" style={{ fontSize: 10, letterSpacing: "0.12em", color: "var(--text-muted)" }}>
-                  {course.enrolled.toLocaleString()} enrolled
-                </span>
-                <span className="rs-word" style={{ fontSize: 10, letterSpacing: "0.12em", color: "var(--text-muted)" }}>
-                  {formatMoney(course.revenue)} revenue
-                </span>
-              </>
-            }
-          />
-        );
-      })}
+      {courses.length === 0 && (
+        <p
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 14,
+            color: "var(--text-muted)",
+          }}
+        >
+          No courses yet. Start with “New course”.
+        </p>
+      )}
+
+      {courses.map((course) => (
+        <ItemCard
+          key={course.id}
+          href={`/educator/courses/${course.id}`}
+          eyebrow={course.category}
+          title={
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span>{course.title}</span>
+              <Badge tone={course.is_published ? "complete" : "locked"}>
+                {course.is_published ? "Live" : "Draft"}
+              </Badge>
+            </div>
+          }
+          description={course.subtitle ?? ""}
+          footer={
+            <>
+              <span className="rs-word" style={muted}>
+                {course.lesson_count} lessons ·{" "}
+                {formatDuration(course.total_duration_seconds)}
+              </span>
+              <span className="rs-word" style={muted}>
+                {course.enrolled_count.toLocaleString()} enrolled
+              </span>
+              <span className="rs-word" style={muted}>
+                {course.level}
+              </span>
+            </>
+          }
+        />
+      ))}
     </WebShell>
   );
 }

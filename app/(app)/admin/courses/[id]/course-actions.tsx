@@ -1,30 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Modal, Textarea, WBtn } from "@/components/ui/primitives";
-import type { CourseStatus } from "@/lib/seed-data";
+import { rejectCourse, setPublished } from "@/lib/course-actions";
 
+/**
+ * The schema has one flag, `is_published`, not the four-state lifecycle the
+ * seed data modelled — so "pending review" is simply a course that is not yet
+ * live, and there is no separate archived state. Each confirm posts a form to
+ * a server action, which revalidates the route; nothing is refreshed by hand.
+ */
 export function CourseActions({
+  courseId,
   title,
-  status,
+  isPublished,
   educatorName,
 }: {
+  courseId: string;
   title: string;
-  status: CourseStatus;
+  isPublished: boolean;
   educatorName: string;
 }) {
-  const router = useRouter();
   const [modal, setModal] = useState<"approve" | "reject" | "unpublish" | null>(null);
 
-  // No backend yet — confirming just closes the modal and refreshes the
-  // route so the interaction reads as real without persisting anything.
-  const confirm = () => {
-    setModal(null);
-    router.refresh();
-  };
-
-  if (status === "pending") {
+  if (!isPublished) {
     return (
       <>
         <WBtn kind="ghost" icon="x" sm onClick={() => setModal("reject")}>
@@ -43,9 +42,13 @@ export function CourseActions({
               <WBtn kind="ghost" sm onClick={() => setModal(null)}>
                 Cancel
               </WBtn>
-              <WBtn sm onClick={confirm}>
-                Approve &amp; publish
-              </WBtn>
+              <form action={setPublished}>
+                <input type="hidden" name="courseId" value={courseId} />
+                <input type="hidden" name="next" value="true" />
+                <WBtn type="submit" sm>
+                  Approve &amp; publish
+                </WBtn>
+              </form>
             </>
           }
         >
@@ -72,70 +75,64 @@ export function CourseActions({
           onClose={() => setModal(null)}
           title="Reject course"
           width={520}
-          footer={
-            <>
+        >
+          <form action={rejectCourse} id="reject-form">
+            <input type="hidden" name="courseId" value={courseId} />
+            <div className="rs-label" style={{ marginBottom: 8 }}>
+              Reason for rejection
+            </div>
+            <Textarea
+              name="reason"
+              placeholder="What needs to change before this can be approved?"
+              rows={4}
+            />
+            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "10px 0 14px" }}>
+              This message will be sent to {educatorName}.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <WBtn kind="ghost" sm onClick={() => setModal(null)}>
                 Cancel
               </WBtn>
-              <WBtn sm onClick={confirm}>
+              <WBtn type="submit" sm>
                 Reject &amp; notify
               </WBtn>
-            </>
-          }
-        >
-          <div className="rs-label" style={{ marginBottom: 8 }}>
-            Reason for rejection
-          </div>
-          <Textarea placeholder="What needs to change before this can be approved?" rows={4} />
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "10px 0 0" }}>
-            This message will be sent to {educatorName}.
-          </p>
+            </div>
+          </form>
         </Modal>
       </>
     );
   }
 
-  if (status === "live") {
-    return (
-      <>
-        <WBtn kind="ghost" icon="x" sm onClick={() => setModal("unpublish")}>
-          Unpublish
-        </WBtn>
-        <WBtn kind="ghost" icon="eye" sm>
-          View as student
-        </WBtn>
+  return (
+    <>
+      <WBtn kind="ghost" icon="x" sm onClick={() => setModal("unpublish")}>
+        Unpublish
+      </WBtn>
 
-        <Modal
-          open={modal === "unpublish"}
-          onClose={() => setModal(null)}
-          title="Unpublish this course"
-          footer={
-            <>
-              <WBtn kind="ghost" sm onClick={() => setModal(null)}>
-                Cancel
-              </WBtn>
-              <WBtn sm onClick={confirm}>
+      <Modal
+        open={modal === "unpublish"}
+        onClose={() => setModal(null)}
+        title="Unpublish this course"
+        footer={
+          <>
+            <WBtn kind="ghost" sm onClick={() => setModal(null)}>
+              Cancel
+            </WBtn>
+            <form action={setPublished}>
+              <input type="hidden" name="courseId" value={courseId} />
+              <input type="hidden" name="next" value="false" />
+              <WBtn type="submit" sm>
                 Unpublish
               </WBtn>
-            </>
-          }
-        >
-          <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
-            New students won&rsquo;t be able to enroll. Existing students keep access until their
-            subscriptions expire.
-          </p>
-        </Modal>
-      </>
-    );
-  }
-
-  if (status === "archived") {
-    return (
-      <WBtn kind="ghost" icon="refresh" sm>
-        Re-publish
-      </WBtn>
-    );
-  }
-
-  return null;
+            </form>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+          {title} will leave the catalog. Students already enrolled keep their
+          access and their progress.
+        </p>
+      </Modal>
+    </>
+  );
 }

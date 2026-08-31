@@ -673,3 +673,46 @@ export function Modal({
     </div>
   );
 }
+
+export function Select({
+  name,
+  options,
+  defaultValue,
+  placeholder,
+}: {
+  name?: string;
+  options: readonly { value: string; label: string }[];
+  defaultValue?: string;
+  placeholder?: string;
+}) {
+  return (
+    <select
+      name={name}
+      defaultValue={defaultValue ?? ""}
+      style={{
+        width: "100%",
+        background: "var(--dark-2)",
+        border: "0.5px solid var(--border-mid)",
+        borderRadius: "var(--r-sm)",
+        padding: "13px 16px",
+        color: "var(--text-primary)",
+        fontFamily: "var(--font-body)",
+        fontSize: 14,
+        outline: "none",
+        appearance: "none",
+      }}
+      className="rs-input"
+    >
+      {placeholder && (
+        <option value="" disabled>
+          {placeholder}
+        </option>
+      )}
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}

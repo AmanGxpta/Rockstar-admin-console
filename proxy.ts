@@ -1,6 +1,16 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher(["/login(.*)", "/no-access"]);
+/**
+ * The Clerk webhook is public because it arrives from Clerk's servers with no
+ * session — it authenticates itself by svix signature instead. Protecting it
+ * would reject every delivery, and with it every users row the RLS policies
+ * resolve against.
+ */
+const isPublicRoute = createRouteMatcher([
+  "/login(.*)",
+  "/no-access",
+  "/api/webhooks/(.*)",
+]);
 
 /**
  * Optimistic gate only — it checks for a Clerk session, not for a role.

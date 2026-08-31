@@ -1,167 +1,213 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+
 import { WebShell } from "@/components/shell";
-import { Badge, Card, ProgressBar, SectionH, WBtn, type BadgeTone } from "@/components/ui/primitives";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Badge, Card, SectionH, WBtn } from "@/components/ui/primitives";
+import { deleteBlock, deleteLesson, deleteModule } from "@/lib/course-actions";
+import { formatDuration, getCourseForEditor } from "@/lib/courses";
 import { requireSession } from "@/lib/session";
-import { COURSES, formatMoney } from "@/lib/seed-data";
 
-const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
-  live: { label: "Live", tone: "complete" },
-  pending: { label: "Pending review", tone: "warn" },
-  draft: { label: "Draft", tone: "locked" },
-  archived: { label: "Archived", tone: "locked" },
+import { AddBlockForm, AddLessonForm, AddModuleForm } from "./editor-forms";
+
+const KIND_LABEL: Record<string, string> = {
+  video: "Clip",
+  text: "Notes",
+  image: "Image",
+  pdf: "PDF",
+  embed: "Link",
 };
 
-const MODULE_ICON: Record<string, IconName> = {
-  complete: "check2",
-  active: "play",
-  locked: "lock",
-};
+const muted = {
+  fontSize: 10,
+  letterSpacing: "0.12em",
+  color: "var(--text-muted)",
+} as const;
 
-export default async function EducatorCourseDetail({
+/** A delete control that is a real form post, so it works without JS. */
+function DeleteButton({
+  action,
+  fields,
+  label,
+}: {
+  action: (form: FormData) => Promise<void>;
+  fields: Record<string, string>;
+  label: string;
+}) {
+  return (
+    <form action={action}>
+      {Object.entries(fields).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      <WBtn type="submit" kind="text" sm>
+        {label}
+      </WBtn>
+    </form>
+  );
+}
+
+export default async function CourseEditor({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const session = await requireSession("educator");
   const { id } = await params;
-  const course = COURSES.find((c) => c.id === id);
+
+  // RLS already scopes this to courses the signed-in educator authors, so a
+  // course belonging to someone else comes back null and 404s rather than
+  // needing an ownership check here.
+  const course = await getCourseForEditor(id);
   if (!course) notFound();
 
-  const status = STATUS_BADGE[course.status];
-  const totalMin = course.modules.reduce((a, m) => a + m.minutes, 0);
+  const lessonCount = course.course_modules.reduce(
+    (total, module) => total + module.lessons.length,
+    0,
+  );
 
   return (
     <WebShell
       session={session}
       title={course.title}
-      sub={course.category}
+      sub={`${course.course_modules.length} chapters · ${lessonCount} lessons · ${formatDuration(
+        course.total_duration_seconds,
+      )}`}
       actions={
-        <>
-          <WBtn kind="ghost" icon="pencil" sm>
-            Edit
-          </WBtn>
-          <WBtn icon="eye" sm>
-            View as student
-          </WBtn>
-        </>
+        <Badge tone={course.is_published ? "complete" : "locked"}>
+          {course.is_published ? "Live" : "Draft"}
+        </Badge>
       }
     >
-      <Link
-        href="/educator/courses"
-        className="rs-word"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 10.5,
-          letterSpacing: "0.1em",
-          color: "var(--text-muted)",
-          textDecoration: "none",
-          marginBottom: 20,
-        }}
-      >
-        <Icon name="arrowL" size={12} c="var(--text-muted)" />
-        All courses
-      </Link>
+      {!course.is_published && (
+        <p
+          className="rs-word"
+          style={{ ...muted, marginBottom: 20, display: "block" }}
+        >
+          NOT YET VISIBLE TO STUDENTS — AN ADMIN PUBLISHES IT FROM THE COURSES
+          CONSOLE.
+        </p>
+      )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
-        <div>
-          <Card style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <Badge tone={status.tone}>{status.label}</Badge>
-            </div>
-            <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>
-              {course.description}
-            </p>
-          </Card>
+      {course.course_modules.map((module) => (
+        <Card key={module.id} pad={24} style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <SectionH>
+              Chapter {module.position} · {module.title}
+            </SectionH>
+            <DeleteButton
+              action={deleteModule}
+              fields={{ courseId: course.id, moduleId: module.id }}
+              label="Remove chapter"
+            />
+          </div>
 
-          <Card>
-            <SectionH>Curriculum</SectionH>
-            {course.modules.map((m, i) => (
+          {module.lessons.map((lesson) => (
+            <div
+              key={lesson.id}
+              style={{
+                borderLeft: "2px solid var(--red)",
+                background: "var(--dark-2)",
+                borderRadius: "0 var(--r-sm) var(--r-sm) 0",
+                padding: "16px 20px",
+                marginBottom: 10,
+              }}
+            >
               <div
-                key={m.id}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 14,
-                  padding: "14px 4px",
-                  borderBottom:
-                    i < course.modules.length - 1 ? "0.5px solid var(--border)" : "none",
-                }}
-              >
-                <div
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: "var(--r-sm)",
-                    background: "var(--dark-3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon
-                    name={MODULE_ICON[m.status]}
-                    size={14}
-                    c={m.status === "locked" ? "var(--text-muted)" : "var(--red)"}
-                  />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="rs-label" style={{ marginBottom: 2 }}>
-                    Module {String(i + 1).padStart(2, "0")}
-                  </div>
-                  <div style={{ fontSize: 14, color: "var(--text-primary)" }}>{m.title}</div>
-                </div>
-                <span className="rs-word" style={{ fontSize: 10, letterSpacing: "0.1em", color: "var(--text-muted)" }}>
-                  {m.minutes} min
-                </span>
-              </div>
-            ))}
-          </Card>
-        </div>
-
-        <div>
-          <Card style={{ marginBottom: 16 }}>
-            <SectionH>Stats</SectionH>
-            {[
-              ["Enrolled", course.enrolled.toLocaleString()],
-              ["Completion rate", `${course.completionRate}%`],
-              ["Revenue", formatMoney(course.revenue)],
-              ["Runtime", `${totalMin} min`],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
                   justifyContent: "space-between",
-                  padding: "9px 0",
-                  borderBottom: "0.5px solid var(--border)",
-                  fontSize: 13,
+                  gap: 12,
                 }}
               >
-                <span style={{ color: "var(--text-muted)" }}>{label}</span>
-                <span style={{ color: "var(--text-secondary)" }}>{value}</span>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-body)",
+                      fontSize: 14,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    {lesson.position}. {lesson.title}
+                  </div>
+                  <span className="rs-word" style={muted}>
+                    {formatDuration(lesson.duration_seconds)} ·{" "}
+                    {lesson.lesson_blocks.length} blocks
+                    {lesson.is_preview ? " · FREE PREVIEW" : ""}
+                  </span>
+                </div>
+                <DeleteButton
+                  action={deleteLesson}
+                  fields={{ courseId: course.id, lessonId: lesson.id }}
+                  label="Remove"
+                />
               </div>
-            ))}
-            <div style={{ marginTop: 14 }}>
-              <ProgressBar value={course.completionRate} />
-            </div>
-          </Card>
 
-          <Card>
-            <SectionH>Pricing</SectionH>
-            <div style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 26 }}>
-              {formatMoney(course.price)}
-              <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
-                {" "}/ month
-              </span>
+              {lesson.lesson_blocks.length > 0 && (
+                <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
+                  {lesson.lesson_blocks.map((block) => (
+                    <div
+                      key={block.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "8px 12px",
+                        background: "var(--dark-1)",
+                        borderRadius: "var(--r-sm)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-body)",
+                          fontSize: 12.5,
+                          color: "var(--text-secondary)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <strong style={{ color: "var(--text-primary)" }}>
+                          {KIND_LABEL[block.kind] ?? block.kind}
+                        </strong>
+                        {" · "}
+                        {block.url ?? block.body ?? ""}
+                      </span>
+                      <DeleteButton
+                        action={deleteBlock}
+                        fields={{ courseId: course.id, blockId: block.id }}
+                        label="×"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginTop: 12 }}>
+                <AddBlockForm courseId={course.id} lessonId={lesson.id} />
+              </div>
             </div>
-          </Card>
+          ))}
+
+          <div style={{ marginTop: 16 }}>
+            <AddLessonForm courseId={course.id} moduleId={module.id} />
+          </div>
+        </Card>
+      ))}
+
+      <Card pad={24}>
+        <SectionH>Add a chapter</SectionH>
+        <div style={{ marginTop: 16 }}>
+          <AddModuleForm courseId={course.id} />
         </div>
-      </div>
+      </Card>
     </WebShell>
   );
 }

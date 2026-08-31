@@ -1,60 +1,81 @@
 import Link from "next/link";
-import { WebShell } from "@/components/shell";
-import { Avatar, Badge, Card, Table, type BadgeTone, type Col } from "@/components/ui/primitives";
-import { requireSession } from "@/lib/session";
-import { COURSES, educatorById, formatMoney } from "@/lib/seed-data";
 
-const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
-  live: { label: "Live", tone: "complete" },
-  pending: { label: "Pending", tone: "warn" },
-  draft: { label: "Draft", tone: "locked" },
-  archived: { label: "Archived", tone: "locked" },
-};
+import { WebShell } from "@/components/shell";
+import { Avatar, Badge, Card, Table, type Col } from "@/components/ui/primitives";
+import { formatDuration, listCourses } from "@/lib/courses";
+import { requireSession } from "@/lib/session";
 
 const COLS: Col[] = [
   ["Course", 2],
   ["Educator", 1.2],
   ["Status", 0.9],
+  ["Lessons", 0.8, "right"],
+  ["Length", 0.9, "right"],
   ["Enrolled", 0.8, "right"],
-  ["Revenue", 0.9, "right"],
-  ["Submitted", 0.9, "right"],
 ];
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default async function AdminCourses() {
   const session = await requireSession("admin");
-  const pending = COURSES.filter((c) => c.status === "pending").length;
+  const courses = await listCourses();
+
+  // There is no separate "pending" flag in the schema — a course awaiting
+  // review is simply one that is not yet published.
+  const awaiting = courses.filter((c) => !c.is_published).length;
 
   return (
     <WebShell
       session={session}
       title="Course catalog"
-      sub={`${COURSES.length} courses · ${pending} pending approval`}
+      sub={`${courses.length} courses · ${awaiting} awaiting review`}
     >
       <Card pad={0}>
         <div style={{ padding: "0 4px" }}>
           <Table
             cols={COLS}
-            rows={COURSES.map((c) => {
-              const educator = educatorById(c.educatorId);
-              const status = STATUS_BADGE[c.status];
+            rows={courses.map((course) => {
+              const educatorName =
+                course.educator?.users?.full_name ?? "Unassigned";
+
               return [
                 <Link
-                  key="c"
-                  href={`/admin/courses/${c.id}`}
+                  key="title"
+                  href={`/admin/courses/${course.id}`}
                   style={{ color: "var(--text-primary)", textDecoration: "none" }}
                 >
-                  {c.title}
+                  <div style={{ fontSize: 13.5 }}>{course.title}</div>
+                  <div
+                    className="rs-word"
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.1em",
+                      color: "var(--text-muted)",
+                      marginTop: 2,
+                    }}
+                  >
+                    {course.category} · updated {formatDate(course.updated_at)}
+                  </div>
                 </Link>,
-                <span key="e" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Avatar name={educator?.name ?? "?"} size={22} />
-                  {educator?.name}
-                </span>,
-                <Badge key="s" tone={status.tone}>
-                  {status.label}
+                <div
+                  key="educator"
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  <Avatar name={educatorName} size={24} />
+                  <span style={{ fontSize: 13 }}>{educatorName}</span>
+                </div>,
+                <Badge key="status" tone={course.is_published ? "complete" : "locked"}>
+                  {course.is_published ? "Live" : "Draft"}
                 </Badge>,
-                c.enrolled.toLocaleString(),
-                formatMoney(c.revenue),
-                new Date(c.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                course.lesson_count,
+                formatDuration(course.total_duration_seconds),
+                course.enrolled_count.toLocaleString(),
               ];
             })}
           />
