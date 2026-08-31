@@ -23,7 +23,7 @@ export function WebShell({
         width: "100%",
         height: "100%",
         display: "flex",
-        background: "var(--surface)",
+        background: "var(--dark)",
         overflow: "hidden",
       }}
     >
@@ -35,15 +35,14 @@ export function WebShell({
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
-          background: "var(--paper)",
+          background: "var(--dark)",
         }}
       >
         <header
           style={{
-            height: 70,
+            height: 68,
             flexShrink: 0,
-            borderBottom: "1px solid var(--line)",
-            background: "var(--surface)",
+            borderBottom: "0.5px solid var(--border)",
             display: "flex",
             alignItems: "center",
             padding: "0 28px",
@@ -52,14 +51,14 @@ export function WebShell({
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1
-              className="rs-display"
-              style={{ fontSize: 21, margin: 0, letterSpacing: "-.02em" }}
+              className="rs-head"
+              style={{ fontSize: 20, margin: 0 }}
             >
               {title}
             </h1>
             {sub && (
               <div
-                style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 2 }}
+                style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 3 }}
               >
                 {sub}
               </div>
@@ -68,47 +67,49 @@ export function WebShell({
 
           <div
             style={{
-              width: 240,
-              height: 40,
-              borderRadius: 11,
-              background: "var(--paper)",
+              width: 220,
+              height: 38,
+              borderRadius: "var(--r-sm)",
+              background: "var(--dark-2)",
+              border: "0.5px solid var(--border-mid)",
               display: "flex",
               alignItems: "center",
               gap: 9,
-              padding: "0 14px",
-              boxShadow: "inset 0 0 0 1px var(--line-2)",
+              padding: "0 13px",
             }}
           >
-            <Icon name="search" size={17} c="var(--ink-3)" />
-            <span style={{ fontSize: 13.5, color: "var(--ink-3)" }}>
+            <Icon name="search" size={15} c="var(--text-muted)" />
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
               Search…
             </span>
           </div>
 
           <div
+            className="rs-iconbtn"
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 11,
-              background: "var(--paper)",
-              boxShadow: "inset 0 0 0 1px var(--line-2)",
+              width: 38,
+              height: 38,
+              borderRadius: "var(--r-sm)",
+              background: "var(--dark-2)",
+              border: "0.5px solid var(--border-mid)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               position: "relative",
+              cursor: "pointer",
             }}
           >
-            <Icon name="bell" size={19} c="var(--ink-2)" />
+            <Icon name="bell" size={17} c="var(--text-secondary)" />
             <div
               style={{
                 position: "absolute",
-                top: 9,
-                right: 10,
-                width: 7,
-                height: 7,
+                top: 8,
+                right: 9,
+                width: 6,
+                height: 6,
                 borderRadius: 99,
-                background: "var(--clay)",
-                border: "1.5px solid var(--paper)",
+                background: "var(--red)",
+                border: "1.5px solid var(--dark-2)",
               }}
             />
           </div>
@@ -117,7 +118,7 @@ export function WebShell({
         </header>
 
         <div
-          style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}
+          style={{ flex: 1, overflowY: "auto", padding: "28px" }}
           className="rs-noscroll"
         >
           {children}

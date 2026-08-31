@@ -10,7 +10,7 @@ const SLIDES = [
   {
     kicker: "For educators",
     line: "Teach the techniques you wish you’d learned sooner.",
-    body: "Build a course, grade real work, and watch your students level up — all from one warm little studio.",
+    body: "Build a course, grade real work, and watch your students level up — all from one studio.",
   },
   {
     kicker: "For studios",
@@ -39,36 +39,15 @@ function LeftPanel() {
         position: "relative",
         height: "100%",
         overflow: "hidden",
-        background:
-          "linear-gradient(158deg, #C75C3C 0%, #A8452A 52%, #6E3324 100%)",
+        background: "var(--red-faint)",
+        borderRight: "0.5px solid var(--border)",
         display: "flex",
         flexDirection: "column",
-        padding: "40px 44px",
+        padding: "44px 48px",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background:
-            "radial-gradient(420px 320px at 82% 8%, rgba(255,255,255,.20), transparent 60%), radial-gradient(360px 300px at 6% 96%, rgba(207,154,71,.28), transparent 62%)",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          opacity: 0.5,
-          background:
-            "repeating-linear-gradient(48deg, rgba(255,255,255,.04) 0 14px, transparent 14px 30px)",
-          mixBlendMode: "screen",
-        }}
-      />
-
       <div style={{ position: "relative", zIndex: 1 }}>
-        <RSLogo size={22} color="#fff" mark="#fff" />
+        <RSLogo size={26} />
       </div>
 
       <div
@@ -83,38 +62,28 @@ function LeftPanel() {
         }}
       >
         <div key={i} className="rs-login-slide">
-          <div
-            className="rs-eyebrow"
-            style={{ color: "rgba(255,255,255,.72)", marginBottom: 16 }}
-          >
+          <div className="rs-eyebrow" style={{ marginBottom: 18 }}>
             {s.kicker}
           </div>
           <h2
-            className="rs-display"
-            style={{
-              margin: 0,
-              color: "#fff",
-              fontSize: 34,
-              lineHeight: 1.08,
-              fontWeight: 800,
-            }}
+            className="rs-head"
+            style={{ margin: 0, fontSize: 36, lineHeight: 1.12 }}
           >
             {s.line}
           </h2>
           <p
             style={{
-              margin: "18px 0 0",
-              color: "rgba(255,255,255,.82)",
-              fontSize: 15.5,
-              lineHeight: 1.55,
-              fontWeight: 500,
+              margin: "20px 0 0",
+              color: "var(--text-secondary)",
+              fontSize: 15,
+              lineHeight: 1.65,
             }}
           >
             {s.body}
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 32 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 36 }}>
           {SLIDES.map((_, n) => (
             <button
               key={n}
@@ -122,14 +91,14 @@ function LeftPanel() {
               onClick={() => setI(n)}
               aria-label={`Slide ${n + 1}`}
               style={{
-                height: 6,
-                width: n === i ? 26 : 6,
+                height: 3,
+                width: n === i ? 26 : 12,
                 borderRadius: 99,
                 border: "none",
                 cursor: "pointer",
                 padding: 0,
-                background: n === i ? "#fff" : "rgba(255,255,255,.4)",
-                transition: "width .3s ease, background .3s ease",
+                background: n === i ? "var(--red)" : "var(--border-strong)",
+                transition: "width 0.3s ease, background 0.3s ease",
               }}
             />
           ))}
@@ -143,27 +112,25 @@ function LeftPanel() {
           display: "flex",
           alignItems: "center",
           gap: 13,
-          paddingTop: 22,
-          borderTop: "1px solid rgba(255,255,255,.18)",
+          paddingTop: 24,
+          borderTop: "0.5px solid var(--border)",
         }}
       >
-        <Avatar
-          name="Rae Mills"
-          size={44}
-          style={{ boxShadow: "0 0 0 2px rgba(255,255,255,.35)" }}
-        />
+        <Avatar name="Rae Mills" size={40} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: "#fff", fontWeight: 700, fontSize: 13.5 }}>
-            “I onboarded my whole salon in a weekend.”
+          <div style={{ color: "var(--text-primary)", fontSize: 13.5, fontStyle: "italic" }}>
+            &ldquo;I onboarded my whole salon in a weekend.&rdquo;
           </div>
           <div
+            className="rs-word"
             style={{
-              color: "rgba(255,255,255,.7)",
-              fontSize: 12,
-              marginTop: 2,
+              color: "var(--text-muted)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              marginTop: 4,
             }}
           >
-            Rae Mills · Master Colorist, Maison Atelier
+            Rae Mills &middot; Master Colorist, Maison Atelier
           </div>
         </div>
       </div>
@@ -193,36 +160,27 @@ function Input({
   const [focus, setFocus] = useState(false);
   return (
     <label style={{ display: "block" }}>
-      <div
-        style={{
-          fontSize: 12.5,
-          fontWeight: 700,
-          color: "var(--ink-2)",
-          marginBottom: 7,
-        }}
-      >
+      <div className="rs-label" style={{ marginBottom: 8 }}>
         {label}
       </div>
       <div
         style={{
-          height: 52,
-          borderRadius: 13,
-          background: "var(--surface)",
+          height: 50,
+          borderRadius: "var(--r-sm)",
+          background: "var(--dark-2)",
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "0 14px",
-          boxShadow: focus
-            ? "0 0 0 2px var(--clay)"
-            : "inset 0 0 0 1.5px var(--line-2)",
-          transition: "box-shadow .15s ease",
+          border: `0.5px solid ${focus ? "var(--red)" : "var(--border-mid)"}`,
+          transition: "border-color 0.18s ease",
         }}
       >
         {icon && (
           <Icon
             name={icon}
-            size={18}
-            c={focus ? "var(--clay)" : "var(--ink-3)"}
+            size={16}
+            c={focus ? "var(--red)" : "var(--text-muted)"}
           />
         )}
         <input
@@ -238,10 +196,9 @@ function Input({
             border: "none",
             outline: "none",
             background: "transparent",
-            fontFamily: "var(--ui)",
-            fontSize: 15,
-            fontWeight: 600,
-            color: "var(--ink)",
+            fontFamily: "var(--font-body)",
+            fontSize: 14.5,
+            color: "var(--text-primary)",
             minWidth: 0,
           }}
         />
@@ -262,41 +219,43 @@ function SubmitButton({
     <button
       type="submit"
       disabled={pending}
+      className="rs-btn-primary"
       style={{
         width: "100%",
-        height: 52,
-        borderRadius: 13,
+        height: 50,
+        borderRadius: "var(--r-sm)",
         border: "none",
         cursor: pending ? "default" : "pointer",
-        background: "var(--clay)",
-        color: "#fff",
-        fontFamily: "var(--ui)",
-        fontWeight: 800,
-        fontSize: 15.5,
-        letterSpacing: "-.01em",
-        boxShadow: "0 8px 20px rgba(199,92,60,.28)",
+        background: "var(--red)",
+        color: "var(--cream)",
+        fontFamily: "var(--font-word)",
+        fontWeight: 200,
+        fontSize: 11,
+        letterSpacing: "0.16em",
+        textTransform: "uppercase",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 9,
-        opacity: pending ? 0.85 : 1,
+        opacity: pending ? 0.7 : 1,
+        transition: "background 0.18s",
       }}
     >
       {pending ? (
         <span
           className="rs-login-spin"
           style={{
-            width: 18,
-            height: 18,
+            width: 16,
+            height: 16,
             borderRadius: 99,
-            border: "2.5px solid rgba(255,255,255,.4)",
-            borderTopColor: "#fff",
+            border: "2px solid rgba(240,237,232,.35)",
+            borderTopColor: "var(--cream)",
             display: "inline-block",
           }}
         />
       ) : (
         <>
-          {label} <Icon name="arrowUR" size={17} c="#fff" />
+          {label} <Icon name="arrowUR" size={14} c="var(--cream)" />
         </>
       )}
     </button>
@@ -479,7 +438,7 @@ export function LoginScreen() {
         height: "100%",
         display: "grid",
         gridTemplateColumns: "1.05fr 1fr",
-        background: "var(--surface)",
+        background: "var(--dark)",
       }}
     >
       <LeftPanel />
@@ -492,7 +451,7 @@ export function LoginScreen() {
           justifyContent: "center",
           padding: "40px",
           overflowY: "auto",
-          background: "var(--paper)",
+          background: "var(--dark)",
         }}
       >
         <form
@@ -500,21 +459,13 @@ export function LoginScreen() {
           onSubmit={onSubmit}
           style={{ width: "100%", maxWidth: 372 }}
         >
-          <h1
-            className="rs-display"
-            style={{
-              margin: 0,
-              fontSize: 28,
-              fontWeight: 800,
-              letterSpacing: "-.02em",
-            }}
-          >
+          <h1 className="rs-head" style={{ margin: 0, fontSize: 30 }}>
             {copy.title}
           </h1>
           <p
             style={{
-              margin: "8px 0 28px",
-              color: "var(--ink-2)",
+              margin: "10px 0 30px",
+              color: "var(--text-secondary)",
               fontSize: 14.5,
             }}
           >
@@ -570,8 +521,8 @@ export function LoginScreen() {
                   >
                     <Icon
                       name="eye"
-                      size={18}
-                      c={show ? "var(--clay)" : "var(--ink-3)"}
+                      size={16}
+                      c={show ? "var(--red)" : "var(--text-muted)"}
                     />
                   </button>
                 }
@@ -582,16 +533,15 @@ export function LoginScreen() {
           {notice && (
             <div
               style={{
-                marginTop: 12,
+                marginTop: 14,
                 fontSize: 13,
-                fontWeight: 600,
-                color: "#3E6B4A",
+                color: "var(--success)",
                 display: "flex",
                 alignItems: "center",
                 gap: 7,
               }}
             >
-              <Icon name="check" size={15} c="var(--leaf)" />
+              <Icon name="check" size={14} c="var(--success)" />
               {notice}
             </div>
           )}
@@ -599,16 +549,15 @@ export function LoginScreen() {
           {error && (
             <div
               style={{
-                marginTop: 12,
+                marginTop: 14,
                 fontSize: 13,
-                fontWeight: 600,
-                color: "var(--clay-deep)",
+                color: "var(--danger)",
                 display: "flex",
                 alignItems: "center",
                 gap: 7,
               }}
             >
-              <Icon name="x" size={15} c="var(--clay)" />
+              <Icon name="x" size={14} c="var(--danger)" />
               {error}
             </div>
           )}
@@ -617,12 +566,13 @@ export function LoginScreen() {
             style={{
               display: "flex",
               justifyContent: mode === "signin" ? "flex-end" : "flex-start",
-              margin: "16px 0 22px",
+              margin: "18px 0 24px",
             }}
           >
             <button
               type="button"
               onClick={() => goTo(mode === "signin" ? "forgot" : "signin")}
+              className="rs-word"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -631,14 +581,14 @@ export function LoginScreen() {
                 background: "transparent",
                 padding: 0,
                 cursor: "pointer",
-                fontFamily: "var(--ui)",
-                fontSize: 13.5,
-                fontWeight: 700,
-                color: "var(--clay)",
+                fontSize: 10.5,
+                fontWeight: 200,
+                letterSpacing: "0.1em",
+                color: "var(--red)",
               }}
             >
               {mode !== "signin" && (
-                <Icon name="arrowL" size={15} c="var(--clay)" />
+                <Icon name="arrowL" size={13} c="var(--red)" />
               )}
               {mode === "signin" ? "Forgot password?" : "Back to sign in"}
             </button>

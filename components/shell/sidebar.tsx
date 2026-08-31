@@ -14,15 +14,14 @@ function itemStyle(active: boolean, inert: boolean) {
     alignItems: "center",
     gap: 11,
     padding: "9px 10px",
-    borderRadius: 11,
+    borderRadius: "var(--r-sm)",
     marginBottom: 2,
     cursor: inert ? "default" : "pointer",
     textDecoration: "none",
-    background: active ? "var(--clay-tint)" : "transparent",
-    color: active ? "var(--clay-deep)" : "var(--ink-2)",
-    fontWeight: active ? 700 : 600,
-    fontSize: 14,
-    opacity: inert ? 0.55 : 1,
+    background: active ? "var(--red-faint)" : "transparent",
+    color: active ? "var(--text-primary)" : "var(--text-secondary)",
+    fontSize: 13.5,
+    opacity: inert ? 0.5 : 1,
   } as const;
 }
 
@@ -32,22 +31,23 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
     <>
       <Icon
         name={item.icon}
-        size={18}
-        c={active ? "var(--clay)" : "var(--ink-3)"}
+        size={17}
+        c={active ? "var(--red)" : "var(--text-muted)"}
         sw={active ? 2 : 1.8}
       />
       <span style={{ flex: 1 }}>{item.label}</span>
       {item.badge && (
         <span
+          className="rs-word"
           style={{
-            minWidth: 20,
-            height: 20,
-            padding: "0 6px",
+            minWidth: 18,
+            height: 18,
+            padding: "0 5px",
             borderRadius: 99,
-            background: active ? "var(--clay)" : "var(--line-2)",
-            color: active ? "#fff" : "var(--ink-2)",
-            fontSize: 11,
-            fontWeight: 800,
+            background: active ? "var(--red)" : "var(--dark-4)",
+            color: active ? "var(--cream)" : "var(--text-secondary)",
+            fontSize: 10,
+            fontWeight: 300,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -85,17 +85,17 @@ export function Sidebar({ session }: { session: Session }) {
   return (
     <div
       style={{
-        width: 248,
+        width: 240,
         flexShrink: 0,
-        background: "var(--paper)",
-        borderRight: "1px solid var(--line)",
+        background: "var(--dark)",
+        borderRight: "0.5px solid var(--border)",
         display: "flex",
         flexDirection: "column",
-        padding: "22px 16px",
+        padding: "20px 14px",
       }}
     >
-      <div style={{ padding: "0 8px 22px" }}>
-        <RSLogo size={21} />
+      <div style={{ padding: "2px 8px 24px" }}>
+        <RSLogo size={24} />
       </div>
 
       <div style={{ flex: 1, overflowY: "auto" }} className="rs-noscroll">
@@ -103,7 +103,7 @@ export function Sidebar({ session }: { session: Session }) {
           <div key={group.heading} style={{ marginBottom: 20 }}>
             <div
               className="rs-eyebrow"
-              style={{ padding: "0 8px", marginBottom: 8 }}
+              style={{ padding: "0 8px", marginBottom: 10 }}
             >
               {group.heading}
             </div>
@@ -120,7 +120,7 @@ export function Sidebar({ session }: { session: Session }) {
 
       <div
         style={{
-          borderTop: "1px solid var(--line)",
+          borderTop: "0.5px solid var(--border)",
           marginTop: 8,
           paddingTop: 8,
         }}
@@ -131,23 +131,34 @@ export function Sidebar({ session }: { session: Session }) {
             alignItems: "center",
             gap: 10,
             padding: "10px 8px",
-            borderRadius: 11,
+            borderRadius: "var(--r-sm)",
           }}
         >
-          <Avatar name={session.name} size={36} />
+          <Avatar name={session.name} size={34} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>{session.name}</div>
             <div
               style={{
-                fontSize: 11,
-                color: "var(--ink-3)",
-                textTransform: "capitalize",
+                fontSize: 13,
+                color: "var(--text-primary)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {session.name}
+            </div>
+            <div
+              className="rs-word"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.1em",
+                color: "var(--text-muted)",
               }}
             >
               {session.role}
             </div>
           </div>
-          <Icon name="gear" size={17} c="var(--ink-3)" />
+          <Icon name="gear" size={16} c="var(--text-muted)" />
         </div>
         <button
           type="button"
@@ -161,16 +172,15 @@ export function Sidebar({ session }: { session: Session }) {
             padding: "9px 10px",
             marginTop: 2,
             cursor: "pointer",
-            borderRadius: 11,
+            borderRadius: "var(--r-sm)",
             border: "none",
             background: "transparent",
-            color: "var(--ink-2)",
-            fontFamily: "var(--ui)",
-            fontWeight: 600,
-            fontSize: 14,
+            color: "var(--text-secondary)",
+            fontFamily: "var(--font-body)",
+            fontSize: 13.5,
           }}
         >
-          <Icon name="logout" size={18} c="var(--ink-3)" />
+          <Icon name="logout" size={17} c="var(--text-muted)" />
           <span>Sign out</span>
         </button>
       </div>

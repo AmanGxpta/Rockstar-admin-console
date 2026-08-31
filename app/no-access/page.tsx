@@ -22,7 +22,7 @@ export default async function NoAccessPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--paper)",
+        background: "var(--dark)",
         padding: 40,
       }}
     >
@@ -31,40 +31,38 @@ export default async function NoAccessPage() {
           style={{
             display: "flex",
             justifyContent: "center",
-            marginBottom: 32,
+            marginBottom: 36,
           }}
         >
-          <RSLogo size={22} />
+          <RSLogo size={26} />
         </div>
 
         <div
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: 18,
-            background: "var(--gold-tint)",
+            width: 56,
+            height: 56,
+            borderRadius: "var(--r-card)",
+            background: "var(--dark-2)",
+            border: "0.5px solid var(--border-mid)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            margin: "0 auto 22px",
+            margin: "0 auto 24px",
           }}
         >
-          <Icon name="lock" size={26} c="var(--gold)" />
+          <Icon name="lock" size={24} c="var(--red)" />
         </div>
 
-        <h1
-          className="rs-display"
-          style={{ margin: 0, fontSize: 26, fontWeight: 800 }}
-        >
+        <h1 className="rs-head" style={{ margin: 0, fontSize: 26 }}>
           Your account isn’t set up yet
         </h1>
 
         <p
           style={{
-            margin: "12px 0 28px",
-            color: "var(--ink-2)",
+            margin: "14px 0 30px",
+            color: "var(--text-secondary)",
             fontSize: 14.5,
-            lineHeight: 1.6,
+            lineHeight: 1.65,
           }}
         >
           You’re signed in, but this account hasn’t been given an educator or

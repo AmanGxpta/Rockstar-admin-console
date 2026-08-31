@@ -9,24 +9,25 @@ export function SignOutButton() {
     <button
       type="button"
       onClick={() => signOut({ redirectUrl: "/login" })}
+      className="rs-word rs-btn-primary"
       style={{
-        height: 46,
-        padding: "0 20px",
-        borderRadius: 12,
+        height: 48,
+        padding: "0 26px",
+        borderRadius: "var(--r-sm)",
         border: "none",
         cursor: "pointer",
-        background: "var(--clay)",
-        color: "#fff",
-        fontFamily: "var(--ui)",
-        fontWeight: 700,
-        fontSize: 14.5,
+        background: "var(--red)",
+        color: "var(--cream)",
+        fontWeight: 200,
+        fontSize: 11,
+        letterSpacing: "0.16em",
         display: "inline-flex",
         alignItems: "center",
         gap: 9,
-        boxShadow: "0 8px 20px rgba(199,92,60,.28)",
+        transition: "background 0.18s",
       }}
     >
-      <Icon name="logout" size={17} c="#fff" />
+      <Icon name="logout" size={15} c="var(--cream)" />
       Sign out
     </button>
   );
