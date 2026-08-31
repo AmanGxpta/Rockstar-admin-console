@@ -1,31 +1,16 @@
-import { redirect } from "next/navigation";
 import { WebShell } from "@/components/shell";
 import { Area, Donut } from "@/components/ui/charts";
-import {
-  Avatar,
-  Card,
-  KPI,
-  SectionH,
-  Table,
-  Tag,
-  WBtn,
-  type Col,
-} from "@/components/ui/primitives";
-import { getAuthState, homeFor } from "@/lib/session";
+import { Avatar, Badge, Card, KPI, SectionH, Table, WBtn, type Col } from "@/components/ui/primitives";
+import { requireSession } from "@/lib/session";
+import { SUBMISSIONS, courseById, relativeTime, studentById } from "@/lib/seed-data";
 
 const ENROLLMENTS = [120, 180, 150, 220, 260, 240, 320];
 const MONTHS = ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"];
 
 const COMPLETION: [string, string, string][] = [
-  ["Completed", "72%", "#5E8C6A"],
-  ["In progress", "18%", "#CF9A47"],
-  ["Lapsed", "10%", "#EDE3D9"],
-];
-
-const SUBMISSIONS: [string, string, string][] = [
-  ["Mia Castillo", "Balayage · Ch 2 Sectioning", "4h ago"],
-  ["Jon Park", "Balayage · Ch 1 Tools", "6h ago"],
-  ["Ada Reyes", "Color Theory · Final", "1d ago"],
+  ["Completed", "72%", "var(--success)"],
+  ["In progress", "18%", "var(--warn)"],
+  ["Lapsed", "10%", "var(--dark-4)"],
 ];
 
 const SUB_COLS: Col[] = [
@@ -36,62 +21,30 @@ const SUB_COLS: Col[] = [
 ];
 
 export default async function EducatorDashboard() {
-  const state = await getAuthState();
-  if (state.status !== "ok") redirect("/");
-  const { session } = state;
-  if (session.role !== "educator") redirect(homeFor(session.role));
+  const session = await requireSession("educator");
 
   const firstName = session.name.split(" ")[0];
+  const pending = SUBMISSIONS.filter((s) => s.status === "pending").slice(0, 3);
 
   return (
     <WebShell
       session={session}
       title={`Good morning, ${firstName}`}
-      sub="3 submissions need review"
+      sub={`${pending.length} submissions need review`}
       actions={<WBtn icon="plus">New course</WBtn>}
     >
       <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-        <KPI
-          icon="users"
-          label="Active students"
-          value="1,284"
-          delta="8.2%"
-          tone="clay"
-        />
-        <KPI
-          icon="book"
-          label="Published courses"
-          value="6"
-          delta="1"
-          tone="berry"
-        />
-        <KPI icon="image" label="Pending reviews" value="3" tone="gold" />
-        <KPI
-          icon="award"
-          label="Certs issued"
-          value="412"
-          delta="14%"
-          tone="leaf"
-        />
+        <KPI icon="users" label="Active students" value="1,284" delta="8.2%" />
+        <KPI icon="book" label="Published courses" value="6" delta="1" />
+        <KPI icon="image" label="Pending reviews" value={String(pending.length)} />
+        <KPI icon="award" label="Certs issued" value="412" delta="14%" />
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.6fr 1fr",
-          gap: 16,
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16 }}>
         <Card>
           <SectionH
             action={
-              <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  color: "var(--clay)",
-                }}
-              >
+              <span style={{ fontSize: 12.5, color: "var(--red)" }}>
                 Last 7 months
               </span>
             }
@@ -99,22 +52,9 @@ export default async function EducatorDashboard() {
             Enrollments
           </SectionH>
           <Area id="edu-enrollments" data={ENROLLMENTS} h={150} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 8,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             {MONTHS.map((m) => (
-              <span
-                key={m}
-                style={{
-                  fontSize: 10.5,
-                  color: "var(--ink-3)",
-                  fontWeight: 600,
-                }}
-              >
+              <span key={m} style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
                 {m}
               </span>
             ))}
@@ -127,9 +67,9 @@ export default async function EducatorDashboard() {
             <div style={{ position: "relative" }}>
               <Donut
                 segs={[
-                  [72, "#5E8C6A"],
-                  [18, "#CF9A47"],
-                  [10, "#EDE3D9"],
+                  [72, "var(--success)"],
+                  [18, "var(--warn)"],
+                  [10, "var(--dark-4)"],
                 ]}
               />
               <div
@@ -142,52 +82,23 @@ export default async function EducatorDashboard() {
                   justifyContent: "center",
                 }}
               >
-                <div
-                  style={{
-                    fontFamily: "var(--display)",
-                    fontWeight: 800,
-                    fontSize: 24,
-                  }}
-                >
+                <div style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 22 }}>
                   72%
                 </div>
-                <div style={{ fontSize: 10.5, color: "var(--ink-3)" }}>
-                  completed
-                </div>
+                <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>completed</div>
               </div>
             </div>
             <div style={{ flex: 1 }}>
               {COMPLETION.map(([label, value, color]) => (
                 <div
                   key={label}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 10,
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}
                 >
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 3,
-                      background: color,
-                    }}
-                  />
-                  <span
-                    style={{
-                      flex: 1,
-                      fontSize: 12.5,
-                      color: "var(--ink-2)",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <div style={{ width: 9, height: 9, borderRadius: 2, background: color }} />
+                  <span style={{ flex: 1, fontSize: 12.5, color: "var(--text-secondary)" }}>
                     {label}
                   </span>
-                  <span style={{ fontWeight: 700, fontSize: 12.5 }}>
-                    {value}
-                  </span>
+                  <span style={{ fontWeight: 500, fontSize: 12.5 }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -203,20 +114,21 @@ export default async function EducatorDashboard() {
           <div style={{ padding: "0 4px 8px" }}>
             <Table
               cols={SUB_COLS}
-              rows={SUBMISSIONS.map(([name, course, when]) => [
-                <span
-                  key="s"
-                  style={{ display: "flex", alignItems: "center", gap: 9 }}
-                >
-                  <Avatar name={name} size={28} />
-                  <b>{name}</b>
-                </span>,
-                course,
-                when,
-                <Tag key="t" tone="gold">
-                  Pending
-                </Tag>,
-              ])}
+              rows={pending.map((s) => {
+                const student = studentById(s.studentId);
+                const course = courseById(s.courseId);
+                return [
+                  <span key="s" style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <Avatar name={student?.name ?? "?"} size={28} />
+                    <span style={{ color: "var(--text-primary)" }}>{student?.name}</span>
+                  </span>,
+                  `${course?.title} · ${s.moduleTitle}`,
+                  relativeTime(s.submittedAt),
+                  <Badge key="t" tone="warn" dot={false}>
+                    Pending
+                  </Badge>,
+                ];
+              })}
             />
           </div>
         </Card>
