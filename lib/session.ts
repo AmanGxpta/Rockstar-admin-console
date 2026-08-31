@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { createSupabaseServerClient } from "./supabase";
 
@@ -68,4 +69,16 @@ export const getAuthState = cache(async (): Promise<AuthState> => {
 
 export function homeFor(role: Role): string {
   return role === "admin" ? "/admin" : "/educator";
+}
+
+/**
+ * Every screen under a role-scoped route starts with this: bounce signed-out
+ * users to /login (handled by the (app) layout already, but pages are also
+ * reachable directly) and bounce the wrong role to their own home.
+ */
+export async function requireSession(role: Role): Promise<Session> {
+  const state = await getAuthState();
+  if (state.status !== "ok") redirect("/");
+  if (state.session.role !== role) redirect(homeFor(state.session.role));
+  return state.session;
 }
