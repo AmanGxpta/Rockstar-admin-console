@@ -21,9 +21,9 @@ export const NAV: NavGroup[] = [
     roles: ["educator"],
     items: [
       { label: "Dashboard", icon: "grid", href: "/educator" },
-      { label: "Courses", icon: "book", href: null },
-      { label: "Submissions", icon: "image", href: null, badge: 3 },
-      { label: "Messages", icon: "message", href: null, badge: 5 },
+      { label: "Courses", icon: "book", href: "/educator/courses" },
+      { label: "Submissions", icon: "image", href: "/educator/submissions", badge: 3 },
+      { label: "Messages", icon: "message", href: "/educator/messages", badge: 4 },
     ],
   },
   {
@@ -31,11 +31,11 @@ export const NAV: NavGroup[] = [
     roles: ["admin"],
     items: [
       { label: "Analytics", icon: "chart", href: "/admin" },
-      { label: "Course catalog", icon: "layers", href: null },
-      { label: "Educators", icon: "users", href: null },
-      { label: "Students", icon: "user", href: null },
-      { label: "Certifications", icon: "award", href: null },
-      { label: "Revenue", icon: "card", href: null },
+      { label: "Course catalog", icon: "layers", href: "/admin/courses" },
+      { label: "Educators", icon: "users", href: "/admin/educators" },
+      { label: "Students", icon: "user", href: "/admin/students" },
+      { label: "Certifications", icon: "award", href: "/admin/certifications" },
+      { label: "Revenue", icon: "card", href: "/admin/revenue" },
     ],
   },
 ];
