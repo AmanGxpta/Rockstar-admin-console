@@ -83,9 +83,20 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
   const [addMenu, setAddMenu] = useState(false);
   // Which chapter is being renamed in place, if any.
   const [renaming, setRenaming] = useState<string | null>(null);
+  // The name a chapter is being renamed *to*, shown in its row from the moment
+  // it is submitted. Without it the row shows the old title again between the
+  // field closing and the server round trip landing, which reads as the rename
+  // having failed. Survives the save: once the tree comes back the two agree,
+  // and a failure clears it so the row falls back to the real title.
+  const [pendingName, setPendingName] = useState<{ id: string; title: string } | null>(
+    null,
+  );
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [, start] = useTransition();
+  // Scoped to the rename rather than read off the shared transition, which is
+  // also true while a clip is being added and would spin the wrong row.
+  const [savingName, setSavingName] = useState<string | null>(null);
 
   const say = (message: string) => {
     setToast(message);
@@ -106,6 +117,16 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
   // Not memoised: a course has a handful of chapters, and the early returns
   // here are what the React Compiler refuses to preserve inside a useMemo.
   const current = findSelected(modules, selected);
+
+  // Drop the pending name the moment the tree comes back carrying it. Adjusting
+  // state during the render that makes it redundant, rather than in an effect,
+  // is what keeps the row from ever painting the old title in between.
+  if (
+    pendingName &&
+    modules.find((m) => m.id === pendingName.id)?.title === pendingName.title
+  ) {
+    setPendingName(null);
+  }
 
   const toggle = (id: string) =>
     setOpen((s) => {
@@ -170,10 +191,18 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
 
   const commitRename = (m: EditorModule, title: string) => {
     setRenaming(null);
-    if (title.trim() === m.title) return;
+    const clean = title.trim();
+    if (!clean || clean === m.title) return;
+
+    setPendingName({ id: m.id, title: clean });
+    setSavingName(m.id);
     start(async () => {
-      const result = await renameModule(course.id, m.id, title);
-      say("error" in result ? result.error : "Chapter renamed");
+      const result = await renameModule(course.id, m.id, clean);
+      setSavingName(null);
+      if ("error" in result) {
+        setPendingName(null);
+        say(result.error);
+      }
     });
   };
 
@@ -331,9 +360,11 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
               <div key={m.id} style={{ marginBottom: 6 }}>
                 <ChapterRow
                   chapter={m}
+                  title={pendingName?.id === m.id ? pendingName.title : m.title}
                   count={items.length}
                   isOpen={isOpen}
                   renaming={renaming === m.id}
+                  saving={savingName === m.id}
                   onToggle={() => toggle(m.id)}
                   onStartRename={() => setRenaming(m.id)}
                   onCommit={(title) => commitRename(m, title)}
@@ -524,33 +555,65 @@ const ellipsis = {
  * One chapter in the structure list, and the only place its name can be
  * changed.
  *
- * A row that is a single <button> cannot hold the pencil, since a button
- * inside a button is invalid and the nested click is swallowed — so the row is
- * a flex container with two controls in it: the wide one toggles, the narrow
- * one at the end starts a rename. Renaming swaps the title for an input rather
- * than opening a dialog, because there is exactly one field to edit and the
- * row is already the right size for it.
+ * Renaming does not move the title or put a box around it: the same text keeps
+ * the same slot, and an input with no chrome takes it over so the only thing
+ * that changes is a caret appearing in it. The pencil at the end becomes a
+ * tick while editing — the row itself is the field, and the button says what
+ * finishes it.
+ *
+ * The row had to stop being a single <button> for any of this: a button inside
+ * a button is invalid and the nested click is swallowed. So the chevron, the
+ * title and the pencil are three controls sharing one flex row, and the title
+ * still toggles the chapter when it is not being edited.
  */
 function ChapterRow({
   chapter,
+  title,
   count,
   isOpen,
   renaming,
+  saving,
   onToggle,
   onStartRename,
   onCommit,
   onCancel,
 }: {
   chapter: EditorModule;
+  /** What to show — the pending name while a rename is in flight. */
+  title: string;
   count: number;
   isOpen: boolean;
   renaming: boolean;
+  saving: boolean;
   onToggle: () => void;
   onStartRename: () => void;
   onCommit: (title: string) => void;
   onCancel: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  // Escape is what dismisses the field, and leaving the field is what saves
+  // it — so the blur that follows Escape would save the text Escape was
+  // pressed to discard. This says which of the two happened.
+  const abandoned = useRef(false);
+
+  // The title and the field are the same box, so swapping one for the other
+  // moves nothing on screen.
+  const titleStyle = {
+    flex: 1,
+    minWidth: 0,
+    padding: 0,
+    margin: 0,
+    border: "none",
+    background: "transparent",
+    fontFamily: "var(--font-body)",
+    fontWeight: 700,
+    fontSize: 13,
+    lineHeight: "18px",
+    color: "var(--text-primary)",
+    textAlign: "left" as const,
+    outline: "none",
+  };
 
   return (
     <div
@@ -571,19 +634,16 @@ function ChapterRow({
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
+        aria-label={isOpen ? "Collapse chapter" : "Expand chapter"}
         style={{
           display: "flex",
           alignItems: "center",
           gap: 10,
-          flex: 1,
-          minWidth: 0,
           padding: 0,
           border: "none",
           background: "none",
           cursor: "pointer",
-          textAlign: "left",
-          fontFamily: "inherit",
-          color: "inherit",
+          flexShrink: 0,
         }}
       >
         <Icon name={isOpen ? "chevD" : "chevR"} size={15} c="var(--text-muted)" />
@@ -597,31 +657,69 @@ function ChapterRow({
         >
           {String(chapter.position).padStart(2, "0")}
         </span>
-        {!renaming && (
-          <span style={{ ...ellipsis, flex: 1, fontWeight: 700, fontSize: 13 }}>
-            {chapter.title}
-          </span>
-        )}
       </button>
 
-      {renaming && (
-        <ChapterTitleInput
-          title={chapter.title}
-          onCommit={onCommit}
-          onCancel={onCancel}
+      {renaming ? (
+        <input
+          ref={input}
+          autoFocus
+          defaultValue={title}
+          aria-label="Chapter name"
+          onFocus={(e) => e.currentTarget.select()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onCommit(e.currentTarget.value);
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              abandoned.current = true;
+              onCancel();
+            }
+          }}
+          onBlur={(e) => {
+            if (abandoned.current) return;
+            onCommit(e.currentTarget.value);
+          }}
+          style={titleStyle}
         />
+      ) : (
+        <button type="button" onClick={onToggle} style={{ ...titleStyle, cursor: "pointer" }}>
+          <span style={ellipsis}>{title}</span>
+        </button>
       )}
 
       <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>
         {count}
       </span>
 
-      {!renaming && (
+      {saving ? (
+        <span
+          className="rs-login-spin"
+          aria-label="Saving"
+          style={{
+            width: 13,
+            height: 13,
+            margin: 2,
+            borderRadius: 999,
+            border: "2px solid var(--border-strong)",
+            borderTopColor: "var(--red)",
+            display: "inline-block",
+            flexShrink: 0,
+          }}
+        />
+      ) : (
         <button
           type="button"
-          onClick={onStartRename}
-          title="Rename chapter"
-          aria-label={`Rename ${chapter.title}`}
+          // mousedown, not click: pressing the tick blurs the field first, and
+          // the re-render that follows would unmount this button before its
+          // click ever landed.
+          onMouseDown={(e) => {
+            e.preventDefault();
+            if (renaming) onCommit(input.current?.value ?? title);
+            else onStartRename();
+          }}
+          title={renaming ? "Save name" : "Rename chapter"}
+          aria-label={renaming ? "Save name" : `Rename ${title}`}
           style={{
             display: "flex",
             alignItems: "center",
@@ -629,76 +727,21 @@ function ChapterRow({
             border: "none",
             background: "none",
             cursor: "pointer",
-            // Always present so it can be found, but quiet until the row is
+            // Always there so it can be found, but quiet until the row is
             // under the pointer — a list of chapters should read as titles,
-            // not as a column of icons.
-            opacity: hover ? 1 : 0.4,
+            // not as a column of icons. The tick is never quiet.
+            opacity: renaming || hover ? 1 : 0.4,
             transition: "opacity .15s ease",
           }}
         >
           <Icon
-            name="pencil"
+            name={renaming ? "check2" : "pencil"}
             size={14}
-            c={hover ? "var(--red)" : "var(--text-muted)"}
+            c={renaming || hover ? "var(--red)" : "var(--text-muted)"}
           />
         </button>
       )}
     </div>
-  );
-}
-
-/**
- * The rename field itself.
- *
- * Enter and clicking away both save, which is what an inline field in a list
- * is expected to do. Escape abandons the edit — and sets a flag first, because
- * leaving the field is what dismisses it, and the blur that follows would
- * otherwise save the very text Escape was pressed to discard.
- */
-function ChapterTitleInput({
-  title,
-  onCommit,
-  onCancel,
-}: {
-  title: string;
-  onCommit: (title: string) => void;
-  onCancel: () => void;
-}) {
-  const abandoned = useRef(false);
-
-  return (
-    <input
-      autoFocus
-      defaultValue={title}
-      onFocus={(e) => e.currentTarget.select()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          onCommit(e.currentTarget.value);
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          abandoned.current = true;
-          onCancel();
-        }
-      }}
-      onBlur={(e) => {
-        if (abandoned.current) return;
-        onCommit(e.currentTarget.value);
-      }}
-      style={{
-        flex: 1,
-        minWidth: 0,
-        background: "var(--dark-2)",
-        border: "0.5px solid var(--red)",
-        borderRadius: 7,
-        padding: "5px 8px",
-        color: "var(--text-primary)",
-        fontFamily: "var(--font-body)",
-        fontWeight: 700,
-        fontSize: 13,
-        outline: "none",
-      }}
-    />
   );
 }
 
