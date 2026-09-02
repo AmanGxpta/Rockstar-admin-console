@@ -343,15 +343,12 @@ export function LoginScreen() {
       return;
     }
 
-    if (signIn.status !== "complete") {
-      // Second factor, forced password reset, etc. Say so rather than hang.
-      setError(
-        `Additional verification is needed to finish signing in (${signIn.status}).`,
-      );
-      setPending(false);
-      return;
-    }
-
+    // No status check here: SignInFutureResource has no `status`, so the old
+    // `signIn.status !== "complete"` guard compared undefined to a string, was
+    // always true, and returned before finalize() ever ran — every correct
+    // password ended in "additional verification is needed (undefined)".
+    // In the signals API the absence of an error IS the success signal, and a
+    // second factor comes back as an error on finalize() instead.
     await finalize();
   };
 
@@ -411,14 +408,6 @@ export function LoginScreen() {
       return;
     }
 
-    if (signIn.status !== "complete") {
-      setError(
-        `Password reset, but more verification is needed (${signIn.status}).`,
-      );
-      setPending(false);
-      return;
-    }
-
     await finalize();
   };
 
@@ -456,6 +445,7 @@ export function LoginScreen() {
       >
         <form
           key={mode}
+          method="post"
           onSubmit={onSubmit}
           style={{ width: "100%", maxWidth: 372 }}
         >
