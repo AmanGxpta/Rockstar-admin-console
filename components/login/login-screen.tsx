@@ -262,8 +262,8 @@ function SubmitButton({
   );
 }
 
-/** Which of the three panes the right-hand column is showing. */
-type Mode = "signin" | "forgot" | "reset";
+/** Which of the four panes the right-hand column is showing. */
+type Mode = "signin" | "forgot" | "reset" | "verify";
 
 const COPY: Record<Mode, { title: string; blurb: string; cta: string }> = {
   signin: {
@@ -281,11 +281,18 @@ const COPY: Record<Mode, { title: string; blurb: string; cta: string }> = {
     blurb: "Enter the code we emailed you, then pick a new password.",
     cta: "Reset password",
   },
+  verify: {
+    title: "Confirm it’s you",
+    blurb: "This device is new to us. Enter the code we just emailed you.",
+    cta: "Verify",
+  },
 };
 
 export function LoginScreen() {
-  // Clerk v7's signals API: `signIn` is null until the client loads, methods
-  // return `{ error }` rather than throwing, and status is read off the resource.
+  // Clerk v7's signals API: `signIn` is null until the client loads, and its
+  // methods report failure by returning `{ error }` rather than throwing. They
+  // do not report an *incomplete* sign-in that way — that shows up as a
+  // status on the resource, which advance() below is what reads.
   const { signIn } = useSignIn();
   const router = useRouter();
 
@@ -311,14 +318,81 @@ export function LoginScreen() {
     setShow(false);
   };
 
-  /** Shared tail: a complete sign-in becomes an active session. */
-  const finalize = async () => {
+  /**
+   * Sends the email code that clears a sign-in waiting on client trust or a
+   * second factor, and shows the pane that collects it.
+   */
+  const askForCode = async () => {
     if (!signIn) return;
-    const { error: finalizeError } = await signIn.finalize();
-    if (finalizeError) {
-      fail(finalizeError, "We couldn't start your session.");
+    const { error: sendError } = await signIn.mfa.sendEmailCode();
+    if (sendError) {
+      fail(sendError, "We couldn't send a verification code.");
       return;
     }
+    setMode("verify");
+    setNotice("We emailed you a verification code.");
+    setPending(false);
+  };
+
+  /**
+   * Shared tail: turn whatever state the sign-in landed in into a session, a
+   * next step, or a readable message.
+   *
+   * A verified first factor is not the end of the flow. This instance has
+   * Clerk's Client Trust switched on, so a correct password from a device
+   * Clerk doesn't recognise comes back 200, with no error, status
+   * `needs_client_trust` and no session — and finalize() *throws* when there is
+   * no session to promote. That is what put "Cannot finalize sign-in without a
+   * created session" in the console under a form that looked like it was still
+   * working. Every status is answered here instead of assuming completion.
+   *
+   * `canSendCode` is false when we arrive from the code pane, so a code that
+   * verifies without completing the sign-in reports that rather than mailing
+   * another code and sending the user round the same loop.
+   */
+  const advance = async (canSendCode = true) => {
+    if (!signIn) return;
+
+    switch (signIn.status) {
+      case "complete":
+        break;
+      case "needs_client_trust":
+      case "needs_second_factor":
+        if (canSendCode) {
+          await askForCode();
+          return;
+        }
+        setError("That code didn't finish the sign-in. Try again.");
+        setPending(false);
+        return;
+      case "needs_new_password":
+        setError(
+          "This account needs a new password. Use “Forgot password?” to set one.",
+        );
+        setPending(false);
+        return;
+      default:
+        setError(
+          `Additional verification is needed to finish signing in (${signIn.status}).`,
+        );
+        setPending(false);
+        return;
+    }
+
+    // finalize() throws instead of returning an error when the sign-in has no
+    // session, so the throw is caught here rather than escaping as an
+    // unhandled rejection that leaves the form spinning.
+    try {
+      const { error: finalizeError } = await signIn.finalize();
+      if (finalizeError) {
+        fail(finalizeError, "We couldn't start your session.");
+        return;
+      }
+    } catch {
+      fail({}, "We couldn't start your session.");
+      return;
+    }
+
     // "/" fans out to the right dashboard once the role is read from Supabase.
     router.push("/");
   };
@@ -343,13 +417,26 @@ export function LoginScreen() {
       return;
     }
 
-    // No status check here: SignInFutureResource has no `status`, so the old
-    // `signIn.status !== "complete"` guard compared undefined to a string, was
-    // always true, and returned before finalize() ever ran — every correct
-    // password ended in "additional verification is needed (undefined)".
-    // In the signals API the absence of an error IS the success signal, and a
-    // second factor comes back as an error on finalize() instead.
-    await finalize();
+    await advance();
+  };
+
+  const onVerifyCode = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!signIn || pending) return;
+
+    const code = String(new FormData(e.currentTarget).get("code") ?? "").trim();
+
+    setPending(true);
+    setError("");
+    setNotice("");
+
+    const { error: verifyError } = await signIn.mfa.verifyEmailCode({ code });
+    if (verifyError) {
+      fail(verifyError, "That code wasn't right.");
+      return;
+    }
+
+    await advance(false);
   };
 
   const onSendCode = async (e: FormEvent<HTMLFormElement>) => {
@@ -408,7 +495,7 @@ export function LoginScreen() {
       return;
     }
 
-    await finalize();
+    await advance();
   };
 
   const copy = COPY[mode];
@@ -417,7 +504,9 @@ export function LoginScreen() {
       ? onSignIn
       : mode === "forgot"
         ? onSendCode
-        : onResetPassword;
+        : mode === "verify"
+          ? onVerifyCode
+          : onResetPassword;
 
   return (
     <div
@@ -463,7 +552,7 @@ export function LoginScreen() {
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {mode !== "reset" && (
+            {(mode === "signin" || mode === "forgot") && (
               <Input
                 label="Email"
                 name="email"
@@ -475,9 +564,9 @@ export function LoginScreen() {
               />
             )}
 
-            {mode === "reset" && (
+            {(mode === "reset" || mode === "verify") && (
               <Input
-                label="Reset code"
+                label={mode === "verify" ? "Verification code" : "Reset code"}
                 name="code"
                 type="text"
                 icon="mail"
@@ -486,7 +575,7 @@ export function LoginScreen() {
               />
             )}
 
-            {mode !== "forgot" && (
+            {(mode === "signin" || mode === "reset") && (
               <Input
                 label={mode === "reset" ? "New password" : "Password"}
                 name="password"
