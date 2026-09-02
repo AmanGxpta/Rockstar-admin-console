@@ -3,9 +3,9 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import { Icon } from "@/components/ui/icon";
-import { Card, Label, Ph, SectionH, Tag, WBtn } from "@/components/ui/primitives";
+import { Card, Ph, SectionH, Tag, WBtn } from "@/components/ui/primitives";
 import { Toast } from "@/components/ui/controls";
-import { addBlock, addLesson, addModule, renameModule } from "@/lib/course-actions";
+import { addLesson, addModule, renameModule } from "@/lib/course-actions";
 import { deleteQuiz, duplicateQuiz } from "@/lib/quiz-actions";
 import {
   chapterItems,
@@ -23,19 +23,8 @@ import {
   type QuizDraft,
 } from "@/lib/quiz-draft";
 
-import type { UploadedMedia } from "@/lib/media-upload";
-
-import { AddBlockForm, ClipTitleForm, DeleteButton } from "./editor-forms";
-import { MediaDropZone } from "./media-picker";
+import { ClipForm } from "./editor-forms";
 import { QuizModal } from "./quiz-modal";
-
-const KIND_LABEL: Record<string, string> = {
-  video: "Clip",
-  text: "Notes",
-  image: "Image",
-  pdf: "PDF",
-  embed: "Link",
-};
 
 /** What the right-hand pane is showing. */
 type Selection =
@@ -433,25 +422,22 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                       ),
                     )}
 
+                    {/* Named for the chapter rather than left to the Add menu
+                        at the top: a chapter is created empty, and the next
+                        thing to do with it belongs inside it. */}
+                    <button
+                      type="button"
+                      onClick={() => addClip(m)}
+                      style={addInChapterStyle}
+                    >
+                      <Icon name="plus" size={15} c="var(--red)" />
+                      Add clip to this chapter
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => startNewQuiz(m)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        width: "100%",
-                        padding: "8px 10px",
-                        marginTop: 2,
-                        borderRadius: 9,
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        fontFamily: "var(--font-body)",
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        color: "var(--red)",
-                      }}
+                      style={addInChapterStyle}
                     >
                       <Icon name="plus" size={15} c="var(--red)" />
                       Add quiz to this chapter
@@ -540,6 +526,23 @@ const menuItemStyle = {
   fontSize: 13.5,
   fontWeight: 600,
   color: "var(--text-primary)",
+} as const;
+
+const addInChapterStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  padding: "8px 10px",
+  marginTop: 2,
+  borderRadius: 9,
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+  fontSize: 12.5,
+  fontWeight: 700,
+  color: "var(--red)",
 } as const;
 
 const ellipsis = {
@@ -1147,151 +1150,48 @@ function ClipDetail({
   lesson: EditorLesson;
   chapterTitle: string;
 }) {
-  const [attaching, startAttach] = useTransition();
-  const [attachError, setAttachError] = useState<string | null>(null);
-
-  /** A finished upload becomes a block without a second confirmation. */
-  const attach = (media: UploadedMedia) =>
-    startAttach(async () => {
-      const form = new FormData();
-      form.set("courseId", courseId);
-      form.set("lessonId", lesson.id);
-      form.set("kind", media.kind);
-      form.set("url", media.path);
-      if (media.durationSeconds !== null) {
-        form.set("minutes", String(media.durationSeconds / 60));
-      }
-      const result = await addBlock(null, form);
-      setAttachError("error" in result ? result.error : null);
-    });
-
   return (
-    <>
-      <Card style={{ marginBottom: 16 }}>
-        <SectionH action={<Tag tone="leaf">{chapterTitle}</Tag>}>
-          Editing clip
-        </SectionH>
-        <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 18 }}>
-          <Ph
-            dark
-            icon="video"
-            style={{ height: 300, borderRadius: 14, aspectRatio: "9/16" }}
+    <Card>
+      <SectionH action={<Tag tone="leaf">{chapterTitle}</Tag>}>
+        Editing clip
+      </SectionH>
+      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 18 }}>
+        <Ph
+          dark
+          icon="video"
+          style={{ height: 300, borderRadius: 14, aspectRatio: "9/16" }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
             <div
               style={{
-                position: "absolute",
-                inset: 0,
+                width: 52,
+                height: 52,
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.9)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.9)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Icon name="play" size={22} c="var(--red)" />
-              </div>
-            </div>
-          </Ph>
-
-          <div>
-            {/* The clip's own fields — title and free-preview — save on their
-                own, separately from the blocks that make up its body. */}
-            <ClipTitleForm
-              key={lesson.id}
-              courseId={courseId}
-              lesson={lesson}
-            />
-
-            <div style={{ marginTop: 18 }}>
-              <Label hint={`${lesson.lesson_blocks.length} in this clip`}>
-                Content blocks
-              </Label>
-              <div style={{ display: "grid", gap: 6 }}>
-                {lesson.lesson_blocks.map((block) => (
-                  <div
-                    key={block.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "9px 13px",
-                      background: "var(--dark)",
-                      borderRadius: 11,
-                      boxShadow: "inset 0 0 0 1.5px var(--border-mid)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        ...ellipsis,
-                        fontSize: 12.5,
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <strong style={{ color: "var(--text-primary)" }}>
-                        {KIND_LABEL[block.kind] ?? block.kind}
-                      </strong>
-                      {" · "}
-                      {block.url ?? block.body ?? ""}
-                    </span>
-                    <DeleteButton
-                      kind="block"
-                      courseId={courseId}
-                      id={block.id}
-                      label="×"
-                    />
-                  </div>
-                ))}
-                {lesson.lesson_blocks.length === 0 && (
-                  <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                    Nothing in this clip yet.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div style={{ marginTop: 16 }}>
-              <AddBlockForm courseId={courseId} lessonId={lesson.id} />
+              <Icon name="play" size={22} c="var(--red)" />
             </div>
           </div>
-        </div>
-      </Card>
+        </Ph>
 
-      {/* Drop a file here and it becomes a block in one gesture: the file
-          decides the kind, and a clip's length is read off the file rather
-          than typed. The picker beside the URL field above is the same upload
-          for an author who is already filling a block in by hand. */}
-      <MediaDropZone
-        courseId={courseId}
-        lessonId={lesson.id}
-        onUploaded={attach}
-        hint={
-          attaching
-            ? "Adding it to this clip…"
-            : "Drop a file here or click to choose — it is added to this clip as a block."
-        }
-      />
-      {attachError && (
-        <p
-          style={{
-            color: "var(--danger)",
-            fontFamily: "var(--font-body)",
-            fontSize: 12.5,
-            margin: "8px 0 0",
-          }}
-        >
-          {attachError}
-        </p>
-      )}
-    </>
+        <div>
+          {/* Keyed on the clip so switching selection resets the fields to the
+              clip you moved to, rather than carrying the last one's edits. */}
+          <ClipForm key={lesson.id} courseId={courseId} lesson={lesson} />
+        </div>
+      </div>
+    </Card>
   );
 }

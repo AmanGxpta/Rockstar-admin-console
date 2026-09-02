@@ -679,16 +679,26 @@ export function Textarea({
   name,
   placeholder,
   rows = 4,
+  defaultValue,
+  value,
+  onChange,
 }: {
   name?: string;
   placeholder?: string;
   rows?: number;
+  defaultValue?: string;
+  /** Pass with onChange to drive the field from state; omit to leave it uncontrolled. */
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <textarea
       name={name}
       placeholder={placeholder}
       rows={rows}
+      {...(value === undefined
+        ? { defaultValue }
+        : { value, onChange: (e) => onChange?.(e.target.value) })}
       style={{
         width: "100%",
         background: "var(--dark-2)",

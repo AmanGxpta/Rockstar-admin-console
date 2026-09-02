@@ -246,6 +246,90 @@ export async function updateLesson(
   return { ok: true };
 }
 
+/**
+ * The whole clip in one save: its title, its caption, and the one piece of
+ * media attached to it.
+ *
+ * A clip is one media file and a caption in the editor, not a stack of blocks
+ * — so this owns the single lesson_blocks row underneath rather than making
+ * the author add, remove and reorder rows to say something that simple. The
+ * table still holds a list, because the player renders one and a course
+ * imported from elsewhere may have several; this writes the first and leaves
+ * any others alone.
+ */
+export async function saveClip(input: {
+  courseId: string;
+  lessonId: string;
+  title: string;
+  caption: string;
+  kind: BlockKind;
+  url: string | null;
+  durationSeconds: number | null;
+  isPreview: boolean;
+}): Promise<ActionResult> {
+  await requireSession("educator");
+
+  const title = input.title.trim();
+  if (!title) return { error: "A clip needs a title." };
+
+  const caption = input.caption.trim();
+  const url = input.url?.trim() || null;
+  // A clip carrying only words is a text block: lesson_blocks_has_payload
+  // needs one of the two, and `kind` is what tells the player which it got.
+  const kind: BlockKind = url ? input.kind : "text";
+
+  const supabase = createSupabaseServerClient();
+
+  const { error: lessonError } = await supabase
+    .from("lessons")
+    .update({ title, is_preview: input.isPreview })
+    .eq("id", input.lessonId);
+  if (lessonError) return { error: lessonError.message };
+
+  const { data: existing } = await supabase
+    .from("lesson_blocks")
+    .select("id")
+    .eq("lesson_id", input.lessonId)
+    .order("position")
+    .limit(1)
+    .maybeSingle();
+
+  if (!url && !caption) {
+    // Nothing left to say. Removing the row is the only way to express that,
+    // since a block with neither a source nor prose cannot be stored.
+    if (existing) {
+      const { error } = await supabase
+        .from("lesson_blocks")
+        .delete()
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    }
+    revalidatePath(`/educator/courses/${input.courseId}`);
+    return { ok: true };
+  }
+
+  const payload = {
+    kind,
+    url,
+    body: caption || null,
+    // Only a clip has a length, and it is read off the file rather than typed:
+    // lessons.duration_seconds is summed from these by trigger, so a number
+    // that drifts here becomes the course length students see.
+    duration_seconds: kind === "video" ? input.durationSeconds : null,
+  };
+
+  const { error } = existing
+    ? await supabase.from("lesson_blocks").update(payload).eq("id", existing.id)
+    : await supabase
+        .from("lesson_blocks")
+        .insert({ ...payload, lesson_id: input.lessonId, position: 1 });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/educator/courses/${input.courseId}`);
+  return { ok: true };
+}
+
 export async function deleteLesson(form: FormData): Promise<void> {
   await requireSession("educator");
   const courseId = str(form, "courseId");
