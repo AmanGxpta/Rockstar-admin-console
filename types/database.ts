@@ -682,29 +682,44 @@ export type Database = {
         Row: {
           course_id: string
           explanation: string | null
+          hint: string | null
           id: string
+          is_required: boolean
+          media_url: string | null
           module_id: string | null
           position: number
           prompt: string
+          quiz_id: string | null
           topic: string
+          type: Database["public"]["Enums"]["quiz_question_type"]
         }
         Insert: {
           course_id: string
           explanation?: string | null
+          hint?: string | null
           id?: string
+          is_required?: boolean
+          media_url?: string | null
           module_id?: string | null
           position: number
           prompt: string
+          quiz_id?: string | null
           topic: string
+          type?: Database["public"]["Enums"]["quiz_question_type"]
         }
         Update: {
           course_id?: string
           explanation?: string | null
+          hint?: string | null
           id?: string
+          is_required?: boolean
+          media_url?: string | null
           module_id?: string | null
           position?: number
           prompt?: string
+          quiz_id?: string | null
           topic?: string
+          type?: Database["public"]["Enums"]["quiz_question_type"]
         }
         Relationships: [
           {
@@ -716,6 +731,64 @@ export type Database = {
           },
           {
             foreignKeyName: "quiz_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          attempts_allowed: number
+          course_id: string
+          created_at: string
+          gates_progress: boolean
+          id: string
+          module_id: string
+          position: number
+          show_results: boolean
+          title: string
+        }
+        Insert: {
+          attempts_allowed?: number
+          course_id: string
+          created_at?: string
+          gates_progress?: boolean
+          id?: string
+          module_id: string
+          position: number
+          show_results?: boolean
+          title?: string
+        }
+        Update: {
+          attempts_allowed?: number
+          course_id?: string
+          created_at?: string
+          gates_progress?: boolean
+          id?: string
+          module_id?: string
+          position?: number
+          show_results?: boolean
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quizzes_module_id_fkey"
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "course_modules"
@@ -841,6 +914,7 @@ export type Database = {
     }
     Functions: {
       can_author_course: { Args: { p_course_id: string }; Returns: boolean }
+      course_id_from_object_path: { Args: { p_name: string }; Returns: string }
       current_educator_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: {
@@ -931,6 +1005,7 @@ export type Database = {
       inbox_message_kind: "feedback" | "announcement" | "review"
       lesson_block_kind: "video" | "text" | "image" | "pdf" | "embed"
       purchase_status: "pending" | "paid" | "failed" | "refunded" | "cancelled"
+      quiz_question_type: "mc" | "multi" | "image" | "order"
       user_role: "student" | "educator" | "admin" | "super-admin"
     }
     CompositeTypes: {
@@ -947,12 +1022,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -976,11 +1051,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1001,11 +1076,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1026,11 +1101,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1043,11 +1118,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1066,6 +1141,7 @@ export const Constants = {
       inbox_message_kind: ["feedback", "announcement", "review"],
       lesson_block_kind: ["video", "text", "image", "pdf", "embed"],
       purchase_status: ["pending", "paid", "failed", "refunded", "cancelled"],
+      quiz_question_type: ["mc", "multi", "image", "order"],
       user_role: ["student", "educator", "admin", "super-admin"],
     },
   },

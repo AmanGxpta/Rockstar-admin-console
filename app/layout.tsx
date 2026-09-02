@@ -26,7 +26,18 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={`${display.variable} ${ui.variable} h-full`}>
-        <body className="rs h-full">{children}</body>
+        {/*
+          Browser extensions edit <body> before React hydrates — a video-speed
+          controller adds `vsc-initialized`, ad blockers and dark-mode tools add
+          their own — and React reports the class it did not render as a
+          hydration mismatch on every page. Nothing here depends on body's
+          class list matching between server and client, so the warning is
+          suppressed at the one element extensions actually touch rather than
+          left to cry wolf over a real mismatch elsewhere.
+        */}
+        <body className="rs h-full" suppressHydrationWarning>
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );
