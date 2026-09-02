@@ -1,14 +1,27 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 
-import { Select, TextInput, Textarea, WBtn } from "@/components/ui/primitives";
+import { Icon } from "@/components/ui/icon";
+import {
+  Label,
+  Select,
+  TextInput,
+  Textarea,
+  WBtn,
+} from "@/components/ui/primitives";
 import {
   addBlock,
-  addLesson,
-  addModule,
+  deleteBlock,
+  deleteLesson,
+  deleteModule,
+  updateLesson,
   type ActionResult,
 } from "@/lib/course-actions";
+import type { EditorLesson } from "@/lib/course-tree";
+import type { UploadedMedia } from "@/lib/media-upload";
+
+import { MediaPickerButton } from "./media-picker";
 
 const KINDS = [
   { value: "video", label: "Clip" },
@@ -18,12 +31,12 @@ const KINDS = [
   { value: "embed", label: "Link" },
 ];
 
-function Error({ state }: { state: ActionResult | null }) {
+function FormError({ state }: { state: ActionResult | null }) {
   if (!state || !("error" in state)) return null;
   return (
     <p
       style={{
-        color: "var(--red)",
+        color: "var(--danger)",
         fontFamily: "var(--font-body)",
         fontSize: 12.5,
         marginTop: 8,
@@ -34,82 +47,107 @@ function Error({ state }: { state: ActionResult | null }) {
   );
 }
 
-/**
- * Each add-form clears itself on success. Without this the author's last entry
- * stays in the box after the list below has already grown by one, which reads
- * as the submit having failed.
- */
-function useResettingAction(
-  fn: (prev: ActionResult | null, form: FormData) => Promise<ActionResult>,
-) {
-  const ref = useRef<HTMLFormElement>(null);
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
-    async (prev, form) => {
-      const result = await fn(prev, form);
-      if ("ok" in result) ref.current?.reset();
-      return result;
-    },
-    null,
-  );
-  return { ref, state, action, pending };
-}
-
-export function AddModuleForm({ courseId }: { courseId: string }) {
-  const { ref, state, action, pending } = useResettingAction(addModule);
+/** A delete control that is a real form post, so it works without JS. */
+export function DeleteButton({
+  kind,
+  courseId,
+  id,
+  label,
+}: {
+  kind: "module" | "lesson" | "block";
+  courseId: string;
+  id: string;
+  label: string;
+}) {
+  const action =
+    kind === "module"
+      ? deleteModule
+      : kind === "lesson"
+        ? deleteLesson
+        : deleteBlock;
+  const field =
+    kind === "module" ? "moduleId" : kind === "lesson" ? "lessonId" : "blockId";
 
   return (
-    <form ref={ref} action={action}>
+    <form action={action}>
       <input type="hidden" name="courseId" value={courseId} />
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <div style={{ flex: 1 }}>
-          <TextInput name="title" placeholder="Chapter name" />
-        </div>
-        <WBtn type="submit" kind="ghost" icon="plus" disabled={pending}>
-          {pending ? "Adding…" : "Add chapter"}
-        </WBtn>
-      </div>
-      <Error state={state} />
+      <input type="hidden" name={field} value={id} />
+      <WBtn type="submit" kind="text" sm>
+        {label}
+      </WBtn>
     </form>
   );
 }
 
-export function AddLessonForm({
+/** The clip's own fields. Saves on its own, apart from the blocks below it. */
+export function ClipTitleForm({
   courseId,
-  moduleId,
+  lesson,
 }: {
   courseId: string;
-  moduleId: string;
+  lesson: EditorLesson;
 }) {
-  const { ref, state, action, pending } = useResettingAction(addLesson);
+  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
+    updateLesson,
+    null,
+  );
 
   return (
-    <form ref={ref} action={action}>
+    <form action={action}>
       <input type="hidden" name="courseId" value={courseId} />
-      <input type="hidden" name="moduleId" value={moduleId} />
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
-          <TextInput name="title" placeholder="Lesson title" />
-        </div>
+      <input type="hidden" name="lessonId" value={lesson.id} />
+
+      <Label>Clip title</Label>
+      <TextInput name="title" defaultValue={lesson.title} />
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          marginTop: 12,
+        }}
+      >
         <label
-          className="rs-word"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            fontSize: 10,
-            letterSpacing: "0.12em",
-            color: "var(--text-muted)",
+            gap: 7,
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: "var(--text-secondary)",
             whiteSpace: "nowrap",
           }}
         >
-          <input type="checkbox" name="is_preview" />
-          FREE PREVIEW
+          <input
+            type="checkbox"
+            name="is_preview"
+            defaultChecked={lesson.is_preview}
+          />
+          Free preview
         </label>
-        <WBtn type="submit" kind="ghost" sm disabled={pending}>
-          {pending ? "Adding…" : "Add lesson"}
-        </WBtn>
+
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <DeleteButton
+            kind="lesson"
+            courseId={courseId}
+            id={lesson.id}
+            label="Remove clip"
+          />
+          <WBtn type="submit" sm icon="check2" disabled={pending}>
+            {pending ? "Saving…" : "Save clip"}
+          </WBtn>
+        </div>
       </div>
-      <Error state={state} />
+
+      <FormError state={state} />
     </form>
   );
 }
@@ -121,12 +159,46 @@ export function AddBlockForm({
   courseId: string;
   lessonId: string;
 }) {
-  const { ref, state, action, pending } = useResettingAction(addBlock);
+  // Controlled, because an upload writes into three of them at once: the file
+  // decides the source, the kind and — for a clip — its length. An uncontrolled
+  // form would leave the author to retype what the file already knew.
+  const [kind, setKind] = useState("video");
+  const [url, setUrl] = useState("");
+  const [minutes, setMinutes] = useState("");
+  const [uploaded, setUploaded] = useState<string | null>(null);
+
+  // Not useResettingAction: form.reset() cannot clear a controlled field, so
+  // this clears the state instead — and only on success, so a rejected block
+  // leaves the author what they typed rather than making them type it again.
+  const ref = useRef<HTMLFormElement>(null);
+  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
+    async (prev, form) => {
+      const result = await addBlock(prev, form);
+      if ("ok" in result) {
+        ref.current?.reset();
+        setUrl("");
+        setMinutes("");
+        setUploaded(null);
+      }
+      return result;
+    },
+    null,
+  );
+
+  const onUploaded = (media: UploadedMedia) => {
+    setUrl(media.path);
+    setKind(media.kind);
+    setUploaded(media.fileName);
+    if (media.durationSeconds !== null) {
+      setMinutes((media.durationSeconds / 60).toFixed(1).replace(/\.0$/, ""));
+    }
+  };
 
   return (
     <form ref={ref} action={action}>
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="lessonId" value={lessonId} />
+      <Label>Add a block</Label>
       <div
         style={{
           display: "grid",
@@ -135,17 +207,56 @@ export function AddBlockForm({
           alignItems: "start",
         }}
       >
-        <Select name="kind" options={KINDS} defaultValue="video" />
+        <Select name="kind" options={KINDS} value={kind} onChange={setKind} />
         <div style={{ display: "grid", gap: 8 }}>
-          <TextInput name="url" placeholder="Storage path or https:// URL" />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TextInput
+                name="url"
+                placeholder="Upload a file, or paste an https:// URL"
+                value={url}
+                onChange={(next) => {
+                  setUrl(next);
+                  setUploaded(null);
+                }}
+              />
+            </div>
+            <MediaPickerButton
+              courseId={courseId}
+              lessonId={lessonId}
+              onUploaded={onUploaded}
+            />
+          </div>
+          {uploaded && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                fontSize: 12,
+                color: "var(--text-secondary)",
+              }}
+            >
+              <Icon name="check2" size={13} c="var(--success)" />
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {uploaded} uploaded — add the block to attach it.
+              </span>
+            </div>
+          )}
           <Textarea name="body" rows={2} placeholder="Notes, or a caption" />
         </div>
-        <TextInput name="minutes" type="number" placeholder="min" />
+        <TextInput
+          name="minutes"
+          type="number"
+          placeholder="min"
+          value={minutes}
+          onChange={setMinutes}
+        />
         <WBtn type="submit" kind="ghost" sm disabled={pending}>
           {pending ? "…" : "Add"}
         </WBtn>
       </div>
-      <Error state={state} />
+      <FormError state={state} />
     </form>
   );
 }

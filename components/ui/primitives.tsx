@@ -97,58 +97,156 @@ export function Avatar({
   );
 }
 
-export type BadgeTone = "active" | "complete" | "locked" | "warn" | "neutral";
+export type TagTone = "clay" | "gold" | "leaf" | "rose" | "berry" | "ink";
 
-const BADGE_TONES: Record<BadgeTone, { bg: string; fg: string; dot?: string }> = {
-  active: { bg: "var(--danger-bg)", fg: "#E06060", dot: "#E06060" },
-  complete: { bg: "var(--success-bg)", fg: "var(--success)", dot: "var(--success)" },
-  locked: { bg: "rgba(240,237,232,0.07)", fg: "var(--text-muted)", dot: "var(--text-muted)" },
-  warn: { bg: "var(--warn-bg)", fg: "var(--warn)", dot: "var(--warn)" },
-  neutral: { bg: "var(--dark-3)", fg: "var(--text-secondary)" },
+const TAG_TONES: Record<TagTone, [bg: string, fg: string]> = {
+  clay: ["var(--clay-tint)", "var(--clay-deep)"],
+  gold: ["var(--gold-tint)", "#9a6e22"],
+  leaf: ["var(--leaf-tint)", "#3e6b4a"],
+  rose: ["var(--rose-tint)", "#b45561"],
+  berry: ["var(--berry-tint)", "#7a4460"],
+  ink: ["var(--paper-2)", "var(--ink-2)"],
 };
 
-export function Badge({
+/** The design's pill. Sentence case, no dot — see Badge for the semantic API. */
+export function Tag({
   children,
-  tone = "neutral",
-  dot = true,
+  tone = "clay",
+  style,
 }: {
   children: ReactNode;
-  tone?: BadgeTone;
-  dot?: boolean;
+  tone?: TagTone;
+  style?: CSSProperties;
 }) {
-  const t = BADGE_TONES[tone];
+  const [bg, fg] = TAG_TONES[tone];
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
+        gap: 5,
+        padding: "4px 10px",
         borderRadius: 999,
-        fontFamily: "var(--font-word)",
-        fontWeight: 300,
-        fontSize: 10,
-        letterSpacing: "0.14em",
-        textTransform: "uppercase",
-        padding: "4px 12px",
-        background: t.bg,
-        color: t.fg,
-        border: tone === "neutral" ? "0.5px solid var(--border-mid)" : "none",
+        fontWeight: 700,
+        fontSize: 11,
+        letterSpacing: "0.01em",
         whiteSpace: "nowrap",
+        background: bg,
+        color: fg,
+        ...style,
       }}
     >
-      {dot && t.dot && (
-        <span
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: t.dot,
-            flexShrink: 0,
-          }}
-        />
-      )}
       {children}
     </span>
+  );
+}
+
+export type BadgeTone = "active" | "complete" | "locked" | "warn" | "neutral";
+
+/**
+ * Semantic names over the same pill, kept so the pages that read state off a
+ * row ("is it published?") do not have to know which brand colour that maps
+ * to. New design-led code can reach for Tag directly.
+ */
+const BADGE_TONES: Record<BadgeTone, TagTone> = {
+  active: "clay",
+  complete: "leaf",
+  locked: "ink",
+  warn: "gold",
+  neutral: "ink",
+};
+
+export function Badge({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: BadgeTone;
+  /** Accepted and ignored: the design's pill carries no status dot. */
+  dot?: boolean;
+}) {
+  return <Tag tone={BADGE_TONES[tone]}>{children}</Tag>;
+}
+
+/** Placeholder media. No photography in the system yet, so every image slot
+ * in the design renders this warm gradient instead. */
+export function Ph({
+  label,
+  icon = "image",
+  dark,
+  h,
+  style,
+  children,
+}: {
+  label?: string;
+  icon?: IconName;
+  dark?: boolean;
+  h?: number;
+  style?: CSSProperties;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className={dark ? "rs-ph rs-ph-dark" : "rs-ph"}
+      style={{ height: h, ...style }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
+          color: dark ? "rgba(255,255,255,0.85)" : "var(--clay-deep)",
+        }}
+      >
+        <Icon
+          name={icon}
+          size={26}
+          c={dark ? "rgba(255,255,255,0.8)" : "var(--clay)"}
+          sw={1.6}
+        />
+        {label && (
+          <span
+            style={{
+              fontSize: 11.5,
+              fontWeight: 700,
+              letterSpacing: "0.03em",
+              opacity: 0.85,
+            }}
+          >
+            {label}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Form label in the design's voice: sentence case, with an optional hint. */
+export function Label({
+  children,
+  hint,
+}: {
+  children: ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        gap: 8,
+        marginBottom: 6,
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-2)" }}>
+        {children}
+      </span>
+      {hint && (
+        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{hint}</span>
+      )}
+    </div>
   );
 }
 
@@ -186,18 +284,26 @@ export function ProgressBar({
 }
 
 const BTN_KINDS = {
-  primary: { background: "var(--red)", color: "var(--cream)" },
+  primary: { background: "var(--red)", color: "#fff" },
   ghost: {
-    background: "transparent",
+    background: "var(--dark-2)",
     color: "var(--text-primary)",
-    border: "0.5px solid var(--border-strong)",
+    boxShadow: "inset 0 0 0 1.5px var(--border-mid)",
   },
-  text: { background: "transparent", color: "var(--red)", padding: "12px 2px" },
+  soft: { background: "var(--red-faint)", color: "var(--red-hover)" },
+  /** Not a pill — a bare inline control, used for destructive row actions. */
+  text: {
+    background: "transparent",
+    color: "var(--red)",
+    height: "auto",
+    padding: "4px 2px",
+  },
 } as const;
 
 const BTN_CLASS = {
   primary: "rs-btn-primary",
   ghost: "rs-btn-ghost",
+  soft: "rs-btn-soft",
   text: "",
 } as const;
 
@@ -230,23 +336,23 @@ export function WBtn({
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
-        borderRadius: "var(--r-sm)",
+        height: sm ? 34 : 40,
+        borderRadius: 10,
         border: "none",
         cursor: disabled ? "not-allowed" : "pointer",
-        fontFamily: "var(--font-word)",
-        fontWeight: 200,
-        fontSize: sm ? 10 : 11,
-        letterSpacing: sm ? "0.14em" : "0.16em",
-        textTransform: "uppercase",
+        fontFamily: "var(--font-body)",
+        fontWeight: 700,
+        fontSize: sm ? 13 : 14,
+        letterSpacing: "-0.01em",
         whiteSpace: "nowrap",
-        padding: sm ? "9px 18px" : "13px 28px",
-        transition: "background 0.18s, border-color 0.18s, opacity 0.18s",
+        padding: `0 ${sm ? 14 : 18}px`,
+        transition: "background 0.18s, box-shadow 0.18s, opacity 0.18s",
         opacity: disabled ? 0.5 : 1,
         ...BTN_KINDS[kind],
         ...style,
       }}
     >
-      {icon && <Icon name={icon} size={sm ? 14 : 15} />}
+      {icon && <Icon name={icon} size={sm ? 15 : 17} />}
       {children}
     </button>
   );
@@ -265,8 +371,8 @@ export function Card({
     <div
       style={{
         background: "var(--dark-2)",
-        border: "0.5px solid var(--border)",
-        borderRadius: "var(--r-card)",
+        borderRadius: 18,
+        boxShadow: "var(--sh-1)",
         padding: pad,
         ...style,
       }}
@@ -282,13 +388,16 @@ export function KPI({
   value,
   delta,
   up = true,
+  tone = "clay",
 }: {
   icon: IconName;
   label: string;
   value: string;
   delta?: string;
   up?: boolean;
+  tone?: TagTone;
 }) {
+  const [tint, ink] = TAG_TONES[tone];
   return (
     <Card style={{ flex: 1 }}>
       <div
@@ -300,16 +409,16 @@ export function KPI({
       >
         <div
           style={{
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             borderRadius: "var(--r-sm)",
-            background: "var(--dark-3)",
+            background: tint,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Icon name={icon} size={17} c="var(--red)" />
+          <Icon name={icon} size={19} c={ink} />
         </div>
         {delta && (
           <span
@@ -531,18 +640,25 @@ export function TextInput({
   type = "text",
   placeholder,
   defaultValue,
+  value,
+  onChange,
 }: {
   name?: string;
   type?: string;
   placeholder?: string;
   defaultValue?: string;
+  /** Pass with onChange to drive the field from state; omit to leave it uncontrolled. */
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <input
       name={name}
       type={type}
       placeholder={placeholder}
-      defaultValue={defaultValue}
+      {...(value === undefined
+        ? { defaultValue }
+        : { value, onChange: (e) => onChange?.(e.target.value) })}
       style={{
         width: "100%",
         background: "var(--dark-2)",
@@ -679,16 +795,23 @@ export function Select({
   options,
   defaultValue,
   placeholder,
+  value,
+  onChange,
 }: {
   name?: string;
   options: readonly { value: string; label: string }[];
   defaultValue?: string;
   placeholder?: string;
+  /** Pass with onChange to drive the field from state; omit to leave it uncontrolled. */
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <select
       name={name}
-      defaultValue={defaultValue ?? ""}
+      {...(value === undefined
+        ? { defaultValue: defaultValue ?? "" }
+        : { value, onChange: (e) => onChange?.(e.target.value) })}
       style={{
         width: "100%",
         background: "var(--dark-2)",

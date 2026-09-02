@@ -14,6 +14,9 @@ type BlockKind = Database["public"]["Enums"]["lesson_block_kind"];
 
 export type ActionResult = { error: string } | { ok: true };
 
+/** Like ActionResult, but hands back the id of the row it just created. */
+export type CreatedResult = { error: string } | { ok: true; id: string };
+
 const CATEGORIES = ["color", "cutting", "styling", "editorial", "business"];
 const LEVELS = ["beginner", "intermediate", "advanced"];
 const KINDS = ["video", "text", "image", "pdf", "embed"];
@@ -131,21 +134,54 @@ export async function updateCourseDetails(
 
 // ----------------------------------------------------------------- modules --
 
+/**
+ * Returns the new chapter's id because the editor drops straight into renaming
+ * it: a chapter is created unnamed from a menu, so the caret has to land in
+ * the right row, and only the insert knows which row that is.
+ */
 export async function addModule(
-  _prev: ActionResult | null,
+  _prev: CreatedResult | null,
   form: FormData,
-): Promise<ActionResult> {
+): Promise<CreatedResult> {
   await requireSession("educator");
   const courseId = str(form, "courseId");
   const title = str(form, "title");
   if (!title) return { error: "Name the chapter." };
 
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase.from("course_modules").insert({
-    course_id: courseId,
-    title,
-    position: await nextPosition("course_modules", "course_id", courseId),
-  });
+  const { data, error } = await supabase
+    .from("course_modules")
+    .insert({
+      course_id: courseId,
+      title,
+      position: await nextPosition("course_modules", "course_id", courseId),
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "Could not add the chapter." };
+  }
+  revalidatePath(`/educator/courses/${courseId}`);
+  return { ok: true, id: data.id };
+}
+
+/** Renames a chapter in place. The only field a chapter has. */
+export async function renameModule(
+  courseId: string,
+  moduleId: string,
+  title: string,
+): Promise<ActionResult> {
+  await requireSession("educator");
+
+  const clean = title.trim();
+  if (!clean) return { error: "A chapter needs a name." };
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("course_modules")
+    .update({ title: clean })
+    .eq("id", moduleId);
 
   if (error) return { error: error.message };
   revalidatePath(`/educator/courses/${courseId}`);
@@ -183,6 +219,27 @@ export async function addLesson(
     position: await nextPosition("lessons", "module_id", moduleId),
     is_preview: form.get("is_preview") === "on",
   });
+
+  if (error) return { error: error.message };
+  revalidatePath(`/educator/courses/${courseId}`);
+  return { ok: true };
+}
+
+export async function updateLesson(
+  _prev: ActionResult | null,
+  form: FormData,
+): Promise<ActionResult> {
+  await requireSession("educator");
+  const courseId = str(form, "courseId");
+  const lessonId = str(form, "lessonId");
+  const title = str(form, "title");
+  if (!title) return { error: "A clip needs a title." };
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("lessons")
+    .update({ title, is_preview: form.get("is_preview") === "on" })
+    .eq("id", lessonId);
 
   if (error) return { error: error.message };
   revalidatePath(`/educator/courses/${courseId}`);
@@ -272,6 +329,30 @@ export async function setPublished(form: FormData): Promise<void> {
     .eq("id", id);
 
   if (error) console.error("[courses] publish toggle failed:", error.message);
+
+  revalidatePath("/admin/courses");
+  revalidatePath(`/admin/courses/${id}`);
+}
+
+/**
+ * Features or unfeatures a live course.
+ *
+ * Featuring is a catalog decision rather than an authoring one, so it sits
+ * with the admin actions; `is_featured` has no meaning on a draft, and the
+ * catalog only offers the control on published rows.
+ */
+export async function setFeatured(form: FormData): Promise<void> {
+  await requireSession("admin");
+  const id = str(form, "courseId");
+  const next = str(form, "next") === "true";
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("courses")
+    .update({ is_featured: next, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) console.error("[courses] feature toggle failed:", error.message);
 
   revalidatePath("/admin/courses");
   revalidatePath(`/admin/courses/${id}`);
