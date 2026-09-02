@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { Sidebar } from "./sidebar";
 import type { Session } from "@/lib/session";
@@ -8,12 +9,15 @@ export function WebShell({
   title,
   sub,
   actions,
+  back,
   children,
 }: {
   session: Session;
   title: string;
   sub?: string;
   actions?: ReactNode;
+  /** Href for the header back control. Omitted on top-level screens. */
+  back?: string;
   children: ReactNode;
 }) {
   return (
@@ -49,6 +53,27 @@ export function WebShell({
             gap: 18,
           }}
         >
+          {back && (
+            <Link
+              href={back}
+              aria-label="Back"
+              className="rs-iconbtn"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "var(--r-sm)",
+                flexShrink: 0,
+                background: "var(--dark)",
+                boxShadow: "inset 0 0 0 1px var(--border-mid)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon name="arrowL" size={19} c="var(--text-secondary)" />
+            </Link>
+          )}
+
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1
               className="rs-head"

@@ -384,3 +384,128 @@ export async function getEducatorTotals(): Promise<EducatorTotals> {
     passed: (attempts ?? []).filter((a) => a.passed).length,
   };
 }
+
+// ------------------------------------------------------ course report -----
+
+export type CourseReportRow = {
+  id: string;
+  title: string;
+  category: CourseCategory;
+  educator_name: string;
+  is_published: boolean;
+  enrolled: number;
+  lessons: number;
+  attempts: number;
+  passed: number;
+  certificates: number;
+};
+
+/**
+ * Per-course performance for the admin report.
+ *
+ * Completion is reported as exam pass rate rather than lessons-watched: a
+ * true completion percentage would mean counting lesson_completions against
+ * enrolled × lesson_count for every course, which is a table scan per row.
+ * Pass rate answers the same question from data that is already aggregated.
+ */
+export async function getCourseReport(): Promise<CourseReportRow[]> {
+  const supabase = createSupabaseServerClient();
+
+  const [courses, attempts, certificates] = await Promise.all([
+    supabase
+      .from("courses")
+      .select(
+        `id, title, category, is_published, enrolled_count, lesson_count,
+         educator:educator_profiles ( users ( full_name ) )`,
+      )
+      .order("enrolled_count", { ascending: false }),
+    supabase.from("exam_attempts").select("course_id, passed"),
+    supabase.from("certificates").select("course_id"),
+  ]);
+
+  if (courses.error) {
+    throw new Error(`Could not load course report: ${courses.error.message}`);
+  }
+
+  const rows = (courses.data ?? []) as unknown as {
+    id: string;
+    title: string;
+    category: CourseCategory;
+    is_published: boolean;
+    enrolled_count: number;
+    lesson_count: number;
+    educator: { users: { full_name: string | null } | null } | null;
+  }[];
+
+  const byCourse = new Map<string, { attempts: number; passed: number }>();
+  for (const a of attempts.data ?? []) {
+    const entry = byCourse.get(a.course_id) ?? { attempts: 0, passed: 0 };
+    entry.attempts += 1;
+    if (a.passed) entry.passed += 1;
+    byCourse.set(a.course_id, entry);
+  }
+
+  const certCount = new Map<string, number>();
+  for (const c of certificates.data ?? []) {
+    certCount.set(c.course_id, (certCount.get(c.course_id) ?? 0) + 1);
+  }
+
+  return rows.map((r) => {
+    const a = byCourse.get(r.id) ?? { attempts: 0, passed: 0 };
+    return {
+      id: r.id,
+      title: r.title,
+      category: r.category,
+      educator_name: r.educator?.users?.full_name ?? "Unassigned",
+      is_published: r.is_published,
+      enrolled: r.enrolled_count,
+      lessons: r.lesson_count,
+      attempts: a.attempts,
+      passed: a.passed,
+      certificates: certCount.get(r.id) ?? 0,
+    };
+  });
+}
+
+/**
+ * Certificates bucketed by month, oldest first.
+ *
+ * Returns a fixed-length window so the chart keeps its shape on a quiet month
+ * rather than redrawing with fewer bars.
+ */
+export function certificatesByMonth(
+  certificates: CertificateRow[],
+  months = 7,
+): { labels: string[]; data: number[] } {
+  const now = new Date();
+  const labels: string[] = [];
+  const keys: string[] = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(d.toLocaleDateString("en-GB", { month: "short" }));
+    keys.push(`${d.getFullYear()}-${d.getMonth()}`);
+  }
+
+  const counts = new Map<string, number>();
+  for (const c of certificates) {
+    const d = new Date(c.issued_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return { labels, data: keys.map((k) => counts.get(k) ?? 0) };
+}
+
+/** Certificates grouped by the course title recorded on them. */
+export function certificatesByCourse(
+  certificates: CertificateRow[],
+): { title: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const c of certificates) {
+    counts.set(c.course_title, (counts.get(c.course_title) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([title, count]) => ({ title, count }))
+    .sort((a, b) => b.count - a.count);
+}

@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { WebShell } from "@/components/shell";
-import { Avatar, Badge, Card, Empty, Table, type Col } from "@/components/ui/primitives";
+import {
+  Avatar,
+  Badge,
+  Card,
+  Empty,
+  KPI,
+  Table,
+  type Col,
+} from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
 import { listEducators } from "@/lib/reporting";
 
@@ -28,6 +36,35 @@ export default async function AdminEducators() {
             (unverified ? ` · ${unverified} unverified` : "")
       }
     >
+      <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+        <KPI
+          icon="users"
+          label="Total educators"
+          value={String(educators.length)}
+          tone="clay"
+        />
+        <KPI
+          icon="book"
+          label="Courses created"
+          value={String(educators.reduce((n, e) => n + e.courses, 0))}
+          tone="berry"
+        />
+        <KPI
+          icon="check2"
+          label="Verified"
+          value={String(educators.length - unverified)}
+          tone="leaf"
+        />
+        <KPI
+          icon="user"
+          label="Students reached"
+          value={educators
+            .reduce((n, e) => n + e.students, 0)
+            .toLocaleString()}
+          tone="gold"
+        />
+      </div>
+
       <Card pad={0}>
         {educators.length === 0 ? (
           <Empty

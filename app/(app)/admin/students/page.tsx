@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { WebShell } from "@/components/shell";
-import { Avatar, Badge, Card, Empty, Table, type Col } from "@/components/ui/primitives";
+import {
+  Avatar,
+  Badge,
+  Card,
+  Empty,
+  KPI,
+  Table,
+  type Col,
+} from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
 import { formatDay, listStudents } from "@/lib/reporting";
 
@@ -22,6 +30,37 @@ export default async function AdminStudents() {
       title="Students"
       sub={`${students.length} ${students.length === 1 ? "student" : "students"}`}
     >
+      <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+        <KPI
+          icon="user"
+          label="Total students"
+          value={students.length.toLocaleString()}
+          tone="clay"
+        />
+        <KPI
+          icon="check2"
+          label="Active"
+          value={students.filter((s) => s.is_active).length.toLocaleString()}
+          tone="leaf"
+        />
+        <KPI
+          icon="book"
+          label="Enrollments"
+          value={students
+            .reduce((n, s) => n + s.enrollments, 0)
+            .toLocaleString()}
+          tone="berry"
+        />
+        <KPI
+          icon="award"
+          label="Certified"
+          value={students
+            .filter((s) => s.certificates > 0)
+            .length.toLocaleString()}
+          tone="gold"
+        />
+      </div>
+
       <Card pad={0}>
         {students.length === 0 ? (
           <Empty

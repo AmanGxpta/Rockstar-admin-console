@@ -3,11 +3,15 @@ import "server-only";
 import { auth } from "@clerk/nextjs/server";
 
 import { createSupabaseServerClient } from "./supabase";
-import type { Database } from "@/types/database";
+import type {
+  CourseCategory,
+  CourseForEditor,
+  CourseLevel,
+  CourseListRow,
+  LessonBlockKind,
+} from "./course-tree";
 
-export type CourseCategory = Database["public"]["Enums"]["course_category"];
-export type CourseLevel = Database["public"]["Enums"]["course_level"];
-export type LessonBlockKind = Database["public"]["Enums"]["lesson_block_kind"];
+export type * from "./course-tree";
 
 export const CATEGORIES: CourseCategory[] = [
   "color",
@@ -60,23 +64,6 @@ const LIST_SELECT = `
   educator:educator_profiles ( id, users ( full_name ) )
 `;
 
-export type CourseListRow = {
-  id: string;
-  title: string;
-  subtitle: string | null;
-  category: CourseCategory;
-  level: CourseLevel;
-  is_published: boolean;
-  is_featured: boolean;
-  price_cents: number | null;
-  lesson_count: number;
-  total_duration_seconds: number;
-  enrolled_count: number;
-  created_at: string;
-  updated_at: string;
-  educator: { id: string; users: { full_name: string | null } | null } | null;
-};
-
 /**
  * RLS does the filtering, not a where clause: an educator's own policy already
  * narrows `courses` to the ones they author, and an admin's widens it to all.
@@ -93,39 +80,6 @@ export async function listCourses(): Promise<CourseListRow[]> {
   return (data ?? []) as unknown as CourseListRow[];
 }
 
-export type EditorBlock = {
-  id: string;
-  lesson_id: string;
-  kind: LessonBlockKind;
-  position: number;
-  url: string | null;
-  body: string | null;
-  duration_seconds: number | null;
-};
-
-export type EditorLesson = {
-  id: string;
-  title: string;
-  position: number;
-  is_preview: boolean;
-  duration_seconds: number;
-  lesson_blocks: EditorBlock[];
-};
-
-export type EditorModule = {
-  id: string;
-  title: string;
-  position: number;
-  lessons: EditorLesson[];
-};
-
-export type CourseForEditor = CourseListRow & {
-  overview: string;
-  outcomes: string[];
-  accent: string;
-  access_months: number | null;
-  course_modules: EditorModule[];
-};
 
 /** The whole course tree in one round trip — the editor renders all of it. */
 export async function getCourseForEditor(
@@ -141,6 +95,13 @@ export async function getCourseForEditor(
          lessons (
            id, title, position, is_preview, duration_seconds,
            lesson_blocks ( id, lesson_id, kind, position, url, body, duration_seconds )
+         ),
+         quizzes (
+           id, title, position, attempts_allowed, show_results, gates_progress,
+           quiz_questions (
+             id, prompt, type, explanation, hint, is_required, media_url, position,
+             quiz_choices ( id, body, is_correct, position )
+           )
          )
        )`,
     )
@@ -156,10 +117,17 @@ export async function getCourseForEditor(
   // editor and the mobile player both treat `position` as the running order,
   // and an unsorted tree would show an author their lessons shuffled.
   course.course_modules.sort((a, b) => a.position - b.position);
-  for (const module of course.course_modules) {
-    module.lessons.sort((a, b) => a.position - b.position);
-    for (const lesson of module.lessons) {
+  for (const chapter of course.course_modules) {
+    chapter.lessons.sort((a, b) => a.position - b.position);
+    for (const lesson of chapter.lessons) {
       lesson.lesson_blocks.sort((a, b) => a.position - b.position);
+    }
+    chapter.quizzes.sort((a, b) => a.position - b.position);
+    for (const quiz of chapter.quizzes) {
+      quiz.quiz_questions.sort((a, b) => a.position - b.position);
+      for (const question of quiz.quiz_questions) {
+        question.quiz_choices.sort((a, b) => a.position - b.position);
+      }
     }
   }
 
