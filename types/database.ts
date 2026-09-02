@@ -644,8 +644,179 @@ export type Database = {
           },
         ];
       };
+      entitlements: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          source: Database["public"]["Enums"]["entitlement_source"];
+          source_purchase_id: string | null;
+          status: Database["public"]["Enums"]["entitlement_status"];
+          starts_at: string;
+          expires_at: string | null;
+          granted_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          source: Database["public"]["Enums"]["entitlement_source"];
+          source_purchase_id?: string | null;
+          status?: Database["public"]["Enums"]["entitlement_status"];
+          starts_at?: string;
+          expires_at?: string | null;
+          granted_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          source?: Database["public"]["Enums"]["entitlement_source"];
+          source_purchase_id?: string | null;
+          status?: Database["public"]["Enums"]["entitlement_status"];
+          starts_at?: string;
+          expires_at?: string | null;
+          granted_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "entitlements_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "entitlements_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "courses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "entitlements_source_purchase_id_fkey";
+            columns: ["source_purchase_id"];
+            isOneToOne: false;
+            referencedRelation: "purchases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      purchases: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          provider: string;
+          provider_transaction_id: string | null;
+          provider_customer_id: string | null;
+          amount_cents: number;
+          currency: string;
+          status: Database["public"]["Enums"]["purchase_status"];
+          purchased_at: string | null;
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          provider: string;
+          provider_transaction_id?: string | null;
+          provider_customer_id?: string | null;
+          amount_cents: number;
+          currency: string;
+          status?: Database["public"]["Enums"]["purchase_status"];
+          purchased_at?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          provider?: string;
+          provider_transaction_id?: string | null;
+          provider_customer_id?: string | null;
+          amount_cents?: number;
+          currency?: string;
+          status?: Database["public"]["Enums"]["purchase_status"];
+          purchased_at?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchases_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchases_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      webhook_events: {
+        Row: {
+          id: string;
+          provider: string;
+          provider_event_id: string;
+          event_type: string;
+          status: string;
+          payload: Json | null;
+          error: string | null;
+          received_at: string;
+          processed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          provider: string;
+          provider_event_id: string;
+          event_type: string;
+          status?: string;
+          payload?: Json | null;
+          error?: string | null;
+          received_at?: string;
+          processed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          provider?: string;
+          provider_event_id?: string;
+          event_type?: string;
+          status?: string;
+          payload?: Json | null;
+          error?: string | null;
+          received_at?: string;
+          processed_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
+      enroll_in_course: {
+        Args: { p_course_id: string };
+        Returns: Database["public"]["Tables"]["enrollments"]["Row"];
+      };
+      has_course_access: {
+        Args: { p_course_id: string };
+        Returns: boolean;
+      };
       submit_exam: {
         Args: { p_course_id: string; p_answers: Json };
         Returns: Database["public"]["Tables"]["exam_attempts"]["Row"];
@@ -659,6 +830,14 @@ export type Database = {
         | "editorial"
         | "business";
       course_level: "beginner" | "intermediate" | "advanced";
+      entitlement_source: "free" | "purchase" | "admin_grant";
+      entitlement_status: "active" | "expired" | "revoked";
+      purchase_status:
+        | "pending"
+        | "paid"
+        | "failed"
+        | "refunded"
+        | "cancelled";
       inbox_message_kind: "feedback" | "announcement" | "review";
       lesson_block_kind: "video" | "text" | "image" | "pdf" | "embed";
       user_role: "student" | "educator" | "admin" | "super-admin";
