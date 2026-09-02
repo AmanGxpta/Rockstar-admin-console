@@ -1,68 +1,68 @@
 import Link from "next/link";
 import { WebShell } from "@/components/shell";
-import { Avatar, Badge, Card, Table, type BadgeTone, type Col } from "@/components/ui/primitives";
+import { Avatar, Badge, Card, Empty, Table, type Col } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
-import { COURSES, EDUCATORS, coursesByEducator, formatDate } from "@/lib/seed-data";
-
-const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
-  approved: { label: "Approved", tone: "complete" },
-  pending: { label: "Pending", tone: "warn" },
-  suspended: { label: "Suspended", tone: "active" },
-};
+import { listEducators } from "@/lib/reporting";
 
 const COLS: Col[] = [
-  ["Educator", 1.6],
-  ["Status", 0.9],
-  ["Published courses", 1, "right"],
-  ["Total students", 1, "right"],
-  ["Joined", 0.9, "right"],
+  ["Educator", 1.8],
+  ["Verified", 0.8],
+  ["Published", 0.8, "right"],
+  ["Courses", 0.7, "right"],
+  ["Students", 0.8, "right"],
 ];
 
 export default async function AdminEducators() {
   const session = await requireSession("admin");
-  const pending = EDUCATORS.filter((e) => e.status === "pending").length;
+  const educators = await listEducators();
+  const unverified = educators.filter((e) => !e.is_verified).length;
 
   return (
     <WebShell
       session={session}
       title="Educators"
-      sub={`${EDUCATORS.length} educators · ${pending} pending approval`}
+      sub={
+        educators.length === 0
+          ? "None yet"
+          : `${educators.length} ${educators.length === 1 ? "educator" : "educators"}` +
+            (unverified ? ` · ${unverified} unverified` : "")
+      }
     >
       <Card pad={0}>
-        <div style={{ padding: "0 4px" }}>
-          <Table
-            cols={COLS}
-            rows={EDUCATORS.map((e) => {
-              const courses = coursesByEducator(e.id);
-              const students = courses.reduce((a, c) => a + c.enrolled, 0);
-              const status = STATUS_BADGE[e.status];
-              return [
+        {educators.length === 0 ? (
+          <Empty
+            title="No educators yet"
+            hint="A profile is created automatically when an account's Clerk role is set to educator."
+          />
+        ) : (
+          <div style={{ padding: "0 4px" }}>
+            <Table
+              cols={COLS}
+              rows={educators.map((e) => [
                 <Link
                   key="e"
                   href={`/admin/educators/${e.id}`}
                   style={{ display: "flex", alignItems: "center", gap: 9, color: "var(--text-primary)", textDecoration: "none" }}
                 >
-                  <Avatar name={e.name} size={26} />
+                  <Avatar name={e.full_name ?? e.email ?? "?"} size={26} />
                   <span>
-                    <span style={{ display: "block" }}>{e.name}</span>
-                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)" }}>{e.email}</span>
+                    <span style={{ display: "block" }}>{e.full_name ?? "Unnamed"}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)" }}>
+                      {e.headline ?? e.email ?? "—"}
+                    </span>
                   </span>
                 </Link>,
-                <Badge key="s" tone={status.tone}>
-                  {status.label}
+                <Badge key="v" tone={e.is_verified ? "complete" : "warn"}>
+                  {e.is_verified ? "Verified" : "Unverified"}
                 </Badge>,
-                courses.filter((c) => c.status === "live").length,
-                students.toLocaleString(),
-                formatDate(e.joinedAt),
-              ];
-            })}
-          />
-        </div>
+                e.published,
+                e.courses,
+                e.students.toLocaleString(),
+              ])}
+            />
+          </div>
+        )}
       </Card>
-
-      <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--text-muted)" }}>
-        {COURSES.length} total courses across all educators.
-      </div>
     </WebShell>
   );
 }

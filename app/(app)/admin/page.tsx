@@ -1,216 +1,135 @@
 import { WebShell } from "@/components/shell";
-import { Area, Bars, Donut } from "@/components/ui/charts";
-import { Card, KPI, ProgressBar, SectionH, WBtn } from "@/components/ui/primitives";
+import { Area } from "@/components/ui/charts";
+import { Card, Empty, KPI, ProgressBar, SectionH } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
+import { getCategoryMix, getEnrollmentTrend, getPlatformTotals } from "@/lib/reporting";
 
-const ENGAGEMENT = [
-  2400, 3100, 2800, 3600, 3300, 4200, 4800, 4600, 5400, 5900, 5600, 6400,
-];
-const MONTHS = [
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-];
-
-const CATEGORIES: [string, number][] = [
-  ["Color & Balayage", 82],
-  ["Cutting", 64],
-  ["Barbering", 48],
-  ["Consultation", 36],
-  ["Editorial", 22],
-];
-
-const DEVICES: [string, string, string][] = [
-  ["iOS", "68%", "var(--red)"],
-  ["Android", "28%", "var(--cream-3)"],
-  ["Web", "4%", "var(--dark-4)"],
-];
+const CATEGORY_LABEL: Record<string, string> = {
+  color: "Colour & balayage",
+  cutting: "Cutting",
+  styling: "Styling",
+  editorial: "Editorial",
+  business: "Business",
+};
 
 export default async function AdminDashboard() {
   const session = await requireSession("admin");
+  const [totals, trend, mix] = await Promise.all([
+    getPlatformTotals(),
+    getEnrollmentTrend(),
+    getCategoryMix(),
+  ]);
+
+  const hasTrend = trend.data.some((n) => n > 0);
 
   return (
-    <WebShell
-      session={session}
-      title="Analytics"
-      sub="Platform overview · last 30 days"
-      actions={
-        <WBtn kind="ghost" icon="download" sm>
-          Export
-        </WBtn>
-      }
-    >
+    <WebShell session={session} title="Analytics" sub="Read live from the database">
+      {/*
+        Four figures, all of them derived from rows that exist. The previous
+        version of this screen also showed average session length, clips
+        watched per user and a device split — none of which are measured
+        anywhere, so they have been dropped rather than invented. They come
+        back when there is event tracking to compute them from.
+      */}
       <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-        <KPI icon="users" label="Active users" value="8,412" delta="11.4%" />
-        <KPI icon="book" label="Enrollments" value="3,927" delta="6.8%" />
-        <KPI icon="check2" label="Completion rate" value="68%" delta="3.1%" />
-        <KPI icon="award" label="Certs issued" value="1,204" delta="18%" />
+        <KPI icon="users" label="Students" value={totals.students.toLocaleString()} />
+        <KPI icon="book" label="Enrollments" value={totals.enrollments.toLocaleString()} />
+        <KPI icon="check2" label="Lesson completion" value={`${totals.completionRate}%`} />
+        <KPI icon="award" label="Certificates" value={totals.certificates.toLocaleString()} />
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.7fr 1fr",
-          gap: 16,
-          marginBottom: 16,
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, marginBottom: 16 }}>
         <Card>
-          <SectionH
-            action={
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  color: "var(--text-secondary)",
-                }}
-              >
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 2,
-                    background: "var(--red)",
-                  }}
-                />
-                Active users
-              </span>
-            }
-          >
-            Engagement
-          </SectionH>
-          <Area id="adm-engagement" data={ENGAGEMENT} h={170} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 8,
-            }}
-          >
-            {MONTHS.map((m) => (
-              <span
-                key={m}
-                style={{ fontSize: 10, color: "var(--text-muted)" }}
-              >
-                {m}
-              </span>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionH>Top categories</SectionH>
-          {CATEGORIES.map(([label, value]) => (
-            <div key={label} style={{ marginBottom: 13 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 6,
-                }}
-              >
-                <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>
-                  {label}
-                </span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {value}%
-                </span>
-              </div>
-              <ProgressBar value={value} h={3} />
-            </div>
-          ))}
-        </Card>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 16,
-        }}
-      >
-        <Card>
-          <SectionH>Weekly active</SectionH>
-          <Bars
-            data={[140, 180, 160, 220, 200, 260, 300]}
-            labels={["M", "T", "W", "T", "F", "S", "S"]}
-            h={110}
-          />
-        </Card>
-
-        <Card>
-          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 6 }}>
-            Avg session
-          </div>
-          <div style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 28 }}>
-            14m 20s
-          </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "var(--success)",
-              marginTop: 4,
-              marginBottom: 16,
-            }}
-          >
-            ↑ 2m vs last month
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 6 }}>
-            Clips watched / user
-          </div>
-          <div style={{ fontFamily: "var(--font-head)", fontWeight: 700, fontSize: 28 }}>
-            38
-          </div>
-        </Card>
-
-        <Card>
-          <SectionH>Device split</SectionH>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <Donut
-              segs={[
-                [68, "var(--red)"],
-                [28, "var(--cream-3)"],
-                [4, "var(--dark-4)"],
-              ]}
-              size={110}
-              sw={14}
-            />
-            <div>
-              {DEVICES.map(([label, value, color]) => (
-                <div
-                  key={label}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    marginBottom: 9,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 2,
-                      background: color,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-secondary)",
-                      width: 54,
-                    }}
-                  >
-                    {label}
+          <SectionH>Enrollments by month</SectionH>
+          {hasTrend ? (
+            <>
+              <Area id="adm-enrollments" data={trend.data} h={170} />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                {trend.labels.map((m, i) => (
+                  <span key={`${m}-${i}`} style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                    {m}
                   </span>
-                  <b style={{ fontSize: 12, fontWeight: 500 }}>{value}</b>
+                ))}
+              </div>
+            </>
+          ) : (
+            <Empty
+              title="No enrollments in the last year"
+              hint="The chart draws itself as soon as a student opens their first course."
+            />
+          )}
+        </Card>
+
+        <Card>
+          <SectionH>Where students enrol</SectionH>
+          {mix.length === 0 ? (
+            <Empty title="Nothing to compare yet" />
+          ) : (
+            mix.map((row) => (
+              <div key={row.label} style={{ marginBottom: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>
+                    {CATEGORY_LABEL[row.label] ?? row.label}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {row.count} · {row.percent}%
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
+                <ProgressBar value={row.percent} h={3} />
+              </div>
+            ))
+          )}
+        </Card>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+        <Card>
+          <SectionH>Catalogue</SectionH>
+          <Figure value={totals.published} label="Published" />
+          <Figure value={totals.courses - totals.published} label="In draft" muted />
+        </Card>
+        <Card>
+          <SectionH>Access granted</SectionH>
+          <Figure value={totals.entitlements} label="Active entitlements" />
+          <Figure value={totals.educators} label="Educators" muted />
+        </Card>
+        <Card>
+          <SectionH>Certificates</SectionH>
+          <Figure value={totals.certificates} label="Issued all time" />
+          <Figure
+            value={totals.enrollments - totals.certificates}
+            label="Enrolled, not yet certified"
+            muted
+          />
         </Card>
       </div>
     </WebShell>
+  );
+}
+
+function Figure({
+  value,
+  label,
+  muted = false,
+}: {
+  value: number;
+  label: string;
+  muted?: boolean;
+}) {
+  return (
+    <div style={{ marginTop: muted ? 14 : 0 }}>
+      <div
+        style={{
+          fontFamily: "var(--font-head)",
+          fontWeight: 700,
+          fontSize: muted ? 20 : 28,
+          color: muted ? "var(--text-secondary)" : "var(--text-primary)",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value.toLocaleString()}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
+    </div>
   );
 }

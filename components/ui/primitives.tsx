@@ -716,3 +716,34 @@ export function Select({
     </select>
   );
 }
+
+/**
+ * What a table or panel shows when it genuinely has no rows yet.
+ *
+ * Deliberately states the reason rather than just "No data": on this console
+ * most emptiness is structural (nothing has been published, payments are not
+ * built) and a bare empty table reads as a bug the reader then goes hunting
+ * for.
+ */
+export function Empty({
+  title,
+  hint,
+}: {
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: "34px 20px",
+        textAlign: "center",
+        color: "var(--text-muted)",
+      }}
+    >
+      <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{title}</div>
+      {hint ? (
+        <div style={{ fontSize: 11.5, marginTop: 6, lineHeight: 1.5 }}>{hint}</div>
+      ) : null}
+    </div>
+  );
+}

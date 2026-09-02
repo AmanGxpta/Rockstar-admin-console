@@ -1,63 +1,51 @@
 import { WebShell } from "@/components/shell";
-import { Badge, Card, Table, WBtn, type BadgeTone, type Col } from "@/components/ui/primitives";
+import { Card, Empty, Table, type Col } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
-import { CERTIFICATIONS, courseById, formatDate, studentById } from "@/lib/seed-data";
-
-const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
-  active: { label: "Active", tone: "complete" },
-  revoked: { label: "Revoked", tone: "locked" },
-};
+import { formatDay, listCertificates } from "@/lib/reporting";
 
 const COLS: Col[] = [
-  ["Student", 1.3],
+  ["Recipient", 1.2],
   ["Course", 1.5],
-  ["Issue date", 0.9],
-  ["Cert ID", 1],
-  ["Status", 0.8],
-  ["", 0.6, "right"],
+  ["Educator", 1.1],
+  ["Reference", 1],
+  ["Issued", 0.9, "right"],
 ];
 
 export default async function AdminCertifications() {
   const session = await requireSession("admin");
-  const active = CERTIFICATIONS.filter((c) => c.status === "active").length;
+  const certificates = await listCertificates();
 
   return (
     <WebShell
       session={session}
       title="Certifications"
-      sub={`${active} active · ${CERTIFICATIONS.length} total`}
+      sub={`${certificates.length} issued`}
     >
       <Card pad={0}>
-        <div style={{ padding: "0 4px" }}>
-          <Table
-            cols={COLS}
-            rows={CERTIFICATIONS.map((cert) => {
-              const student = studentById(cert.studentId);
-              const course = courseById(cert.courseId);
-              const status = STATUS_BADGE[cert.status];
-              return [
-                student?.name,
-                course?.title,
-                formatDate(cert.issueDate),
-                <span key="id" style={{ fontFamily: "monospace", fontSize: 12 }}>
-                  {cert.id}
-                </span>,
-                <Badge key="s" tone={status.tone} dot={false}>
-                  {status.label}
-                </Badge>,
-                cert.status === "active" ? (
-                  <WBtn key="a" kind="text" sm>
-                    Revoke
-                  </WBtn>
-                ) : (
-                  <WBtn key="a" kind="text" sm>
-                    Reissue
-                  </WBtn>
-                ),
-              ];
-            })}
+        {certificates.length === 0 ? (
+          <Empty
+            title="No certificates issued yet"
+            hint="One is created automatically the first time a student passes a course exam."
           />
-        </div>
+        ) : (
+          <div style={{ padding: "0 4px" }}>
+            <Table
+              cols={COLS}
+              rows={certificates.map((c) => [
+                // Names are copied onto the certificate when it is issued, not
+                // joined — renaming a course later must not rewrite one that
+                // has already been awarded.
+                c.recipient_name,
+                c.course_title,
+                c.educator_name,
+                <span key="r" style={{ fontFamily: "monospace", fontSize: 12 }}>
+                  {c.reference}
+                </span>,
+                formatDay(c.issued_at),
+              ])}
+            />
+          </div>
+        )}
       </Card>
     </WebShell>
   );

@@ -1,94 +1,78 @@
 import { WebShell } from "@/components/shell";
-import { Bars } from "@/components/ui/charts";
-import { Badge, Card, KPI, SectionH, Table, WBtn, type BadgeTone, type Col } from "@/components/ui/primitives";
+import { Badge, Card, Empty, KPI, SectionH, Table, type BadgeTone, type Col } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
-import { COURSES, TRANSACTIONS, courseById, formatDate, formatMoney, studentById } from "@/lib/seed-data";
+import { formatDay, formatMinor, listPurchases } from "@/lib/reporting";
+import type { Database } from "@/types/database";
 
-const MONTHLY = [8200, 9100, 8700, 10400, 11200, 10800, 12600, 13100, 12400, 14200, 15100, 16400];
-const MONTHS = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
+type PurchaseStatus = Database["public"]["Enums"]["purchase_status"];
 
-const STATUS_BADGE: Record<string, { label: string; tone: BadgeTone }> = {
-  Success: { label: "Success", tone: "complete" },
-  Refunded: { label: "Refunded", tone: "locked" },
+const STATUS: Record<PurchaseStatus, { label: string; tone: BadgeTone }> = {
+  paid: { label: "Paid", tone: "complete" },
+  pending: { label: "Pending", tone: "warn" },
+  failed: { label: "Failed", tone: "locked" },
+  refunded: { label: "Refunded", tone: "locked" },
+  cancelled: { label: "Cancelled", tone: "locked" },
 };
 
 const COLS: Col[] = [
   ["Date", 0.8],
   ["Student", 1.2],
   ["Course", 1.4],
-  ["Type", 1],
-  ["Amount", 0.7, "right"],
+  ["Provider", 0.8],
+  ["Amount", 0.8, "right"],
   ["Status", 0.8, "right"],
 ];
 
 export default async function AdminRevenue() {
   const session = await requireSession("admin");
+  const purchases = await listPurchases();
 
-  const totalRevenue = COURSES.reduce((a, c) => a + c.revenue, 0);
-  const refunds = TRANSACTIONS.filter((t) => t.status === "Refunded");
-  const topCourses = [...COURSES].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-  const maxRev = Math.max(...topCourses.map((c) => c.revenue));
+  // Collected, not billed: only a purchase a provider confirmed counts, so a
+  // pending or failed attempt never inflates the figure.
+  const paid = purchases.filter((p) => p.status === "paid");
+  const refunded = purchases.filter((p) => p.status === "refunded");
+  const collected = paid.reduce((a, p) => a + p.amount_cents, 0);
+  const refundedTotal = refunded.reduce((a, p) => a + p.amount_cents, 0);
 
   return (
-    <WebShell session={session} title="Revenue" sub="All time, across every course" actions={<WBtn kind="ghost" icon="download" sm>Export CSV</WBtn>}>
+    <WebShell session={session} title="Revenue" sub="Collected across every course">
       <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-        <KPI icon="card" label="MRR (this month)" value={formatMoney(16400)} delta="8.6%" />
-        <KPI icon="chart" label="Total revenue (all time)" value={formatMoney(totalRevenue)} />
-        <KPI icon="user" label="Avg revenue / user" value="$24" delta="2.1%" />
-        <KPI icon="x" label="Refunds issued" value={String(refunds.length)} up={false} />
+        <KPI icon="card" label="Collected" value={formatMinor(collected)} />
+        <KPI icon="chart" label="Paid purchases" value={String(paid.length)} />
+        <KPI icon="x" label="Refunded" value={formatMinor(refundedTotal)} up={false} />
+        <KPI
+          icon="user"
+          label="Average sale"
+          value={paid.length ? formatMinor(Math.round(collected / paid.length)) : "—"}
+        />
       </div>
-
-      <Card style={{ marginBottom: 16 }}>
-        <SectionH>Monthly recurring revenue</SectionH>
-        <Bars data={MONTHLY} labels={MONTHS} h={160} />
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
-        <SectionH>Revenue by course</SectionH>
-        {topCourses.map((c) => (
-          <div key={c.id} style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>{c.title}</span>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatMoney(c.revenue)}</span>
-            </div>
-            <div style={{ height: 3, borderRadius: 999, background: "var(--dark-3)", overflow: "hidden" }}>
-              <div
-                style={{
-                  width: `${(c.revenue / maxRev) * 100}%`,
-                  height: "100%",
-                  borderRadius: 999,
-                  background: "var(--red)",
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </Card>
 
       <Card pad={0}>
         <div style={{ padding: "18px 20px 4px" }}>
           <SectionH>Transactions</SectionH>
         </div>
-        <div style={{ padding: "0 4px 8px" }}>
-          <Table
-            cols={COLS}
-            rows={TRANSACTIONS.map((t) => {
-              const student = studentById(t.studentId);
-              const course = courseById(t.courseId);
-              const status = STATUS_BADGE[t.status];
-              return [
-                formatDate(t.date),
-                student?.name,
-                course?.title,
-                t.type,
-                formatMoney(t.amount),
-                <Badge key="s" tone={status.tone} dot={false}>
-                  {status.label}
-                </Badge>,
-              ];
-            })}
+        {purchases.length === 0 ? (
+          <Empty
+            title="No transactions yet"
+            hint="Checkout is not built, so nothing writes to the purchases table. These figures are read from it live and will fill in as soon as a payment provider is wired up."
           />
-        </div>
+        ) : (
+          <div style={{ padding: "0 4px 8px" }}>
+            <Table
+              cols={COLS}
+              rows={purchases.map((p) => [
+                formatDay(p.purchased_at ?? p.created_at),
+                p.user?.full_name ?? p.user?.email ?? "—",
+                p.course?.title ?? "—",
+                p.provider,
+                formatMinor(p.amount_cents, p.currency),
+                <Badge key="s" tone={STATUS[p.status].tone} dot={false}>
+                  {STATUS[p.status].label}
+                </Badge>,
+              ])}
+            />
+          </div>
+        )}
       </Card>
     </WebShell>
   );
