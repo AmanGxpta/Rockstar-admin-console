@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
@@ -79,7 +80,6 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
 
 export function Sidebar({ session }: { session: Session }) {
   const pathname = usePathname();
-  const { signOut } = useClerk();
   const groups = navFor(session.role);
 
   return (
@@ -118,70 +118,143 @@ export function Sidebar({ session }: { session: Session }) {
         ))}
       </div>
 
+      <AccountRow session={session} />
+    </div>
+  );
+}
+
+const menuItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  width: "100%",
+  padding: "9px 10px",
+  borderRadius: 9,
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  textAlign: "left",
+  fontFamily: "var(--font-body)",
+  fontSize: 13.5,
+  color: "var(--text-primary)",
+} as const;
+
+/**
+ * Signing out lives behind the gear rather than as a row of its own: it is the
+ * one nav item you never mean to hit, and it sat one pixel-slip below Messages.
+ */
+function AccountRow({ session }: { session: Session }) {
+  const { signOut, openUserProfile } = useClerk();
+  const [menu, setMenu] = useState(false);
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderTop: "0.5px solid var(--border)",
+        marginTop: 8,
+        paddingTop: 8,
+      }}
+    >
+      {menu && (
+        <>
+          <div
+            onClick={() => setMenu(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 20 }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: "calc(100% - 4px)",
+              zIndex: 21,
+              background: "var(--dark-2)",
+              borderRadius: 12,
+              boxShadow: "var(--sh-3)",
+              padding: 6,
+            }}
+          >
+            {(
+              [
+                ["Account settings", "gear", () => openUserProfile()],
+                ["Sign out", "logout", () => signOut({ redirectUrl: "/login" })],
+              ] as const
+            ).map(([label, icon, run]) => (
+              <button
+                type="button"
+                key={label}
+                onClick={() => {
+                  setMenu(false);
+                  run();
+                }}
+                className="rs-navitem"
+                style={menuItemStyle}
+              >
+                <Icon name={icon} size={16} c="var(--text-muted)" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       <div
         style={{
-          borderTop: "0.5px solid var(--border)",
-          marginTop: 8,
-          paddingTop: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 8px",
+          borderRadius: "var(--r-sm)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 8px",
-            borderRadius: "var(--r-sm)",
-          }}
-        >
-          <Avatar name={session.name} size={34} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--text-primary)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {session.name}
-            </div>
-            <div
-              className="rs-word"
-              style={{
-                fontSize: 10,
-                letterSpacing: "0.1em",
-                color: "var(--text-muted)",
-              }}
-            >
-              {session.role}
-            </div>
+        <Avatar name={session.name} size={34} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--text-primary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {session.name}
           </div>
-          <Icon name="gear" size={16} c="var(--text-muted)" />
+          <div
+            className="rs-word"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              color: "var(--text-muted)",
+            }}
+          >
+            {session.role}
+          </div>
         </div>
         <button
           type="button"
-          onClick={() => signOut({ redirectUrl: "/login" })}
+          onClick={() => setMenu((m) => !m)}
+          aria-label="Account menu"
+          aria-expanded={menu}
           className="rs-navitem"
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 11,
-            width: "100%",
-            padding: "9px 10px",
-            marginTop: 2,
+            display: "grid",
+            placeItems: "center",
+            width: 30,
+            height: 30,
+            flexShrink: 0,
+            borderRadius: 9,
+            border: "0.5px solid var(--border)",
+            background: menu ? "var(--dark-4)" : "transparent",
             cursor: "pointer",
-            borderRadius: "var(--r-sm)",
-            border: "none",
-            background: "transparent",
-            color: "var(--text-secondary)",
-            fontFamily: "var(--font-body)",
-            fontSize: 13.5,
           }}
         >
-          <Icon name="logout" size={17} c="var(--text-muted)" />
-          <span>Sign out</span>
+          <Icon
+            name="gear"
+            size={16}
+            c={menu ? "var(--text-primary)" : "var(--text-muted)"}
+          />
         </button>
       </div>
     </div>
