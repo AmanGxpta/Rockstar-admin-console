@@ -4,12 +4,14 @@ import { WebShell } from "@/components/shell";
 import { Avatar, Badge, Card, Empty, SectionH, Table, type Col } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import { requireSession } from "@/lib/session";
-import { formatDay, getStudent } from "@/lib/reporting";
+import { formatDay, getStudent, listGrantableCourses } from "@/lib/reporting";
+import { GrantAccess, RevokeAccess } from "./access";
 
 const COURSE_COLS: Col[] = [
   ["Course", 1.8],
   ["Enrolled", 0.9],
   ["Access", 1.1, "right"],
+  ["", 0.5, "right"],
 ];
 
 const CERT_COLS: Col[] = [
@@ -27,6 +29,8 @@ export default async function AdminStudentDetail({
   const { id } = await params;
   const student = await getStudent(id);
   if (!student) notFound();
+
+  const grantable = await listGrantableCourses();
 
   return (
     <WebShell
@@ -74,14 +78,20 @@ export default async function AdminStudentDetail({
           <SectionH>Courses</SectionH>
         </div>
         {student.courses.length === 0 ? (
-          <Empty title="Not enrolled in anything yet" />
+          <Empty title="No access to anything yet" />
         ) : (
           <div style={{ padding: "0 4px 8px" }}>
             <Table
               cols={COURSE_COLS}
               rows={student.courses.map((c) => [
                 c.title,
-                formatDay(c.enrolled_at),
+                c.enrolled_at ? (
+                  formatDay(c.enrolled_at)
+                ) : (
+                  <span key="e" style={{ color: "var(--text-muted)" }}>
+                    Not started
+                  </span>
+                ),
                 // Enrollment and access are separate: a lapsed entitlement
                 // leaves the enrollment and its progress intact, so this
                 // column reports the entitlement rather than the enrollment.
@@ -100,10 +110,33 @@ export default async function AdminStudentDetail({
                       : c.entitlement.status}
                   </Badge>
                 ),
+                c.entitlement?.status === "active" ? (
+                  <RevokeAccess key="r" studentId={student.id} courseId={c.id} />
+                ) : null,
               ])}
             />
           </div>
         )}
+
+        <div
+          style={{
+            borderTop: "0.5px solid var(--border)",
+            padding: "16px 20px 18px",
+          }}
+        >
+          <div
+            className="rs-eyebrow"
+            style={{ marginBottom: 10, color: "var(--text-muted)" }}
+          >
+            Grant access by hand
+          </div>
+          <GrantAccess studentId={student.id} courses={grantable} />
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
+            Enrols the student as well, so the course shows up in their app
+            immediately. Until checkout is built, this is how anyone gets into a
+            paid course.
+          </div>
+        </div>
       </Card>
 
       <Card pad={0}>

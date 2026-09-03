@@ -178,15 +178,43 @@ export async function listStudents(): Promise<StudentRow[]> {
   }));
 }
 
+export type StudentAccess = {
+  status: string;
+  expires_at: string | null;
+  source: string;
+};
+
 export type StudentDetail = StudentRow & {
+  /**
+   * Every course the student is enrolled in *or* entitled to — the two are
+   * not the same set. An admin grant creates access before any enrolment
+   * exists, and a lapsed entitlement leaves the enrolment behind, so a list
+   * built from either one alone hides half the story.
+   */
   courses: {
     id: string;
     title: string;
-    enrolled_at: string;
-    entitlement: { status: string; expires_at: string | null } | null;
+    enrolled_at: string | null;
+    entitlement: StudentAccess | null;
   }[];
   awarded: { id: string; course_title: string; reference: string; issued_at: string }[];
 };
+
+/** The courses an admin can hand out. */
+export async function listGrantableCourses(): Promise<
+  { id: string; title: string }[]
+> {
+  const supabase = createSupabaseServerClient();
+  // Published only: an entitlement to an unpublished course buys nothing —
+  // enroll_in_course refuses it and the app's catalog never lists it.
+  const { data } = await supabase
+    .from("courses")
+    .select("id, title")
+    .eq("is_published", true)
+    .order("title");
+
+  return data ?? [];
+}
 
 export async function getStudent(id: string): Promise<StudentDetail | null> {
   const supabase = createSupabaseServerClient();
@@ -206,7 +234,7 @@ export async function getStudent(id: string): Promise<StudentDetail | null> {
         .order("enrolled_at", { ascending: false }),
       supabase
         .from("entitlements")
-        .select("course_id, status, expires_at")
+        .select("course_id, status, expires_at, source, course:courses ( id, title )")
         .eq("user_id", id),
       supabase
         .from("certificates")
@@ -215,24 +243,53 @@ export async function getStudent(id: string): Promise<StudentDetail | null> {
         .order("issued_at", { ascending: false }),
     ]);
 
+  const rights = (entitlements ?? []) as unknown as {
+    course_id: string;
+    status: string;
+    expires_at: string | null;
+    source: string;
+    course: { id: string; title: string } | null;
+  }[];
+
   const byCourse = new Map(
-    (entitlements ?? []).map((e) => [e.course_id, { status: e.status, expires_at: e.expires_at }]),
+    rights.map((e) => [
+      e.course_id,
+      { status: e.status, expires_at: e.expires_at, source: e.source },
+    ]),
   );
+
+  const rows = new Map<string, StudentDetail["courses"][number]>();
+
+  for (const e of (enrollments ?? []) as unknown as {
+    course_id: string;
+    enrolled_at: string;
+    course: { id: string; title: string } | null;
+  }[]) {
+    rows.set(e.course_id, {
+      id: e.course_id,
+      title: e.course?.title ?? "Removed course",
+      enrolled_at: e.enrolled_at,
+      entitlement: byCourse.get(e.course_id) ?? null,
+    });
+  }
+
+  // Access granted but never opened: no enrolment row exists yet, and the
+  // student would be invisible on this screen without this pass.
+  for (const e of rights) {
+    if (rows.has(e.course_id)) continue;
+    rows.set(e.course_id, {
+      id: e.course_id,
+      title: e.course?.title ?? "Removed course",
+      enrolled_at: null,
+      entitlement: byCourse.get(e.course_id) ?? null,
+    });
+  }
 
   return {
     ...user,
     enrollments: (enrollments ?? []).length,
     certificates: (certs ?? []).length,
-    courses: ((enrollments ?? []) as unknown as {
-      course_id: string;
-      enrolled_at: string;
-      course: { id: string; title: string } | null;
-    }[]).map((e) => ({
-      id: e.course_id,
-      title: e.course?.title ?? "Removed course",
-      enrolled_at: e.enrolled_at,
-      entitlement: byCourse.get(e.course_id) ?? null,
-    })),
+    courses: [...rows.values()],
     awarded: certs ?? [],
   };
 }

@@ -177,6 +177,8 @@ export type Database = {
       }
       educator_profiles: {
         Row: {
+          avatar_url: string | null
+          display_name: string | null
           headline: string | null
           id: string
           is_verified: boolean
@@ -185,6 +187,8 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          avatar_url?: string | null
+          display_name?: string | null
           headline?: string | null
           id?: string
           is_verified?: boolean
@@ -193,6 +197,8 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          avatar_url?: string | null
+          display_name?: string | null
           headline?: string | null
           id?: string
           is_verified?: boolean
@@ -528,6 +534,42 @@ export type Database = {
           },
           {
             foreignKeyName: "lesson_completions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_progress: {
+        Row: {
+          enrollment_id: string
+          lesson_id: string
+          position_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          enrollment_id: string
+          lesson_id: string
+          position_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          enrollment_id?: string
+          lesson_id?: string
+          position_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_progress_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
