@@ -5,6 +5,7 @@ import { useSession } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
+import { COVER_MAX_BYTES, isCoverMime } from "./course-cover";
 import type { LessonBlockKind } from "./course-tree";
 
 /**
@@ -168,5 +169,91 @@ export function useMediaUpload(courseId: string, lessonId: string) {
         fileName: file.name,
       },
     };
+  };
+}
+
+// ------------------------------------------------------------------ covers --
+
+/**
+ * Course artwork, which is a different bucket and a different question.
+ *
+ * `course-covers` is public (0015) because a cover exists to be seen by people
+ * who have not bought the course. Its write policy asks the same author-or-
+ * admin question course-media's does, resolved from the same
+ * `courses/<course_id>/…` path shape, so this reuses the browser client above
+ * rather than routing through a server action.
+ */
+
+const COVER_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+};
+
+function coverObjectPath(courseId: string, file: File): string {
+  const ext = COVER_EXT[file.type] ?? "jpg";
+  // `cover/` is for humans browsing the bucket; the random name is what makes
+  // a replacement a new URL rather than a stale CDN cache of the old image.
+  return `courses/${courseId}/cover/${crypto.randomUUID().slice(0, 12)}.${ext}`;
+}
+
+export type CoverUploadResult =
+  | { ok: true; path: string }
+  | { ok: false; error: string };
+
+export function useCoverUpload() {
+  const supabase = useSupabaseBrowserClient();
+
+  return async function uploadCover(
+    courseId: string,
+    file: File,
+    /** The path this one replaces, removed once the new object is in. */
+    replacing?: string | null,
+  ): Promise<CoverUploadResult> {
+    if (!isCoverMime(file.type)) {
+      return {
+        ok: false,
+        error: `${file.type || "That file type"} isn't accepted. Use JPG, PNG, WebP or AVIF.`,
+      };
+    }
+    if (file.size > COVER_MAX_BYTES) {
+      return {
+        ok: false,
+        error: `That image is ${formatBytes(file.size)}. The limit is ${formatBytes(COVER_MAX_BYTES)}.`,
+      };
+    }
+
+    const path = coverObjectPath(courseId, file);
+    const { error } = await supabase.storage
+      .from("course-covers")
+      .upload(path, file, { contentType: file.type, upsert: false });
+
+    if (error) {
+      const denied = /row-level security|not authorized|403/i.test(error.message);
+      return {
+        ok: false,
+        error: denied
+          ? "You don't have permission to change this course's cover."
+          : `Upload failed: ${error.message}`,
+      };
+    }
+
+    // Best effort. An orphaned image costs a few hundred kilobytes; failing the
+    // save over one would cost the author their new cover.
+    if (replacing && replacing !== path) {
+      await supabase.storage.from("course-covers").remove([replacing]);
+    }
+
+    return { ok: true, path };
+  };
+}
+
+/** Removes the object as well as clearing the column's worth of it. */
+export function useCoverRemove() {
+  const supabase = useSupabaseBrowserClient();
+
+  return async function removeCover(path: string): Promise<void> {
+    await supabase.storage.from("course-covers").remove([path]);
   };
 }

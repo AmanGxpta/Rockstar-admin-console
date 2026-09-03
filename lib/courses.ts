@@ -59,7 +59,7 @@ export async function currentEducatorId(): Promise<string | null> {
 
 const LIST_SELECT = `
   id, title, subtitle, category, level, is_published, is_featured,
-  price_cents, lesson_count, total_duration_seconds, enrolled_count,
+  cover_path, price_cents, lesson_count, total_duration_seconds, enrolled_count,
   created_at, updated_at,
   educator:educator_profiles ( id, users ( full_name ) )
 `;

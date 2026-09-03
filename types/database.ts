@@ -106,6 +106,7 @@ export type Database = {
           accent: string
           access_months: number | null
           category: Database["public"]["Enums"]["course_category"]
+          cover_path: string | null
           created_at: string
           educator_id: string
           enrolled_count: number
@@ -127,6 +128,7 @@ export type Database = {
           accent?: string
           access_months?: number | null
           category: Database["public"]["Enums"]["course_category"]
+          cover_path?: string | null
           created_at?: string
           educator_id: string
           enrolled_count?: number
@@ -148,6 +150,7 @@ export type Database = {
           accent?: string
           access_months?: number | null
           category?: Database["public"]["Enums"]["course_category"]
+          cover_path?: string | null
           created_at?: string
           educator_id?: string
           enrolled_count?: number

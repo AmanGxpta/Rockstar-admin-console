@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { WebShell } from "@/components/shell";
 import { Icon } from "@/components/ui/icon";
-import { Card, Empty, Ph, Tag, WBtn } from "@/components/ui/primitives";
+import { CoverImage } from "@/components/ui/cover-image";
+import { Card, Empty, Tag, WBtn } from "@/components/ui/primitives";
 import { formatDuration, listCourses } from "@/lib/courses";
 import { requireSession } from "@/lib/session";
 
@@ -108,7 +109,7 @@ export default async function EducatorCourses({
               style={{ textDecoration: "none", color: "inherit" }}
             >
               <Card pad={0} style={{ overflow: "hidden", height: "100%" }}>
-                <Ph icon="image" h={120} />
+                <CoverImage path={course.cover_path} h={120} />
                 <div style={{ padding: 16 }}>
                   <div
                     style={{

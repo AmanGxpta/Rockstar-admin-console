@@ -120,6 +120,8 @@ export type CourseListRow = {
   level: CourseLevel;
   is_published: boolean;
   is_featured: boolean;
+  /** Object path in the public course-covers bucket, or null for no artwork. */
+  cover_path: string | null;
   price_cents: number | null;
   lesson_count: number;
   total_duration_seconds: number;

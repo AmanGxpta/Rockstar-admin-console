@@ -2,10 +2,12 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 
+import { CoverEditor } from "@/components/ui/cover-picker";
 import { Icon } from "@/components/ui/icon";
 import { Card, Ph, SectionH, Tag, WBtn } from "@/components/ui/primitives";
 import { Toast } from "@/components/ui/controls";
 import { addLesson, addModule, renameModule } from "@/lib/course-actions";
+import { coverPublicUrl } from "@/lib/course-cover";
 import { deleteQuiz, duplicateQuiz } from "@/lib/quiz-actions";
 import {
   chapterItems,
@@ -219,235 +221,248 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
           alignItems: "start",
         }}
       >
-        {/* ---------------------------------------------------- structure -- */}
-        <Card pad={16} style={{ position: "relative" }}>
-          <SectionH
-            action={
-              <button
-                type="button"
-                onClick={() => setAddMenu((m) => !m)}
-                style={{
-                  border: "none",
-                  background: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  color: "var(--red)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                }}
-              >
-                <Icon name="plus" size={17} c="var(--red)" />
-                Add
-              </button>
-            }
-          >
-            Structure
-          </SectionH>
+        {/* The left column is course-level: what the course is called and
+            what it looks like, then what is in it. */}
+        <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
+          <Card pad={16}>
+            <SectionH>Cover</SectionH>
+            <CoverEditor
+              courseId={course.id}
+              path={course.cover_path}
+              url={coverPublicUrl(course.cover_path)}
+            />
+          </Card>
 
-          {addMenu && (
-            <>
-              <div
-                onClick={() => setAddMenu(false)}
-                style={{ position: "fixed", inset: 0, zIndex: 20 }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  right: 14,
-                  top: 46,
-                  zIndex: 21,
-                  width: 210,
-                  background: "var(--dark-2)",
-                  borderRadius: 12,
-                  boxShadow: "var(--sh-3)",
-                  padding: 6,
-                }}
-              >
-                {(
-                  [
-                    ["New clip", "video", () => {
-                      const m = targetModule();
-                      if (m) addClip(m);
-                      else say("Add a chapter first.");
-                    }],
-                    ["New quiz", "zap", () => {
-                      const m = targetModule();
-                      if (m) startNewQuiz(m);
-                      else say("Add a chapter first.");
-                    }],
-                    ["New chapter", "layers", addChapter],
-                  ] as const
-                ).map(([label, icon, run]) => (
-                  <button
-                    type="button"
-                    key={label}
-                    onClick={() => {
-                      setAddMenu(false);
-                      run();
-                    }}
-                    className="rs-navitem"
-                    style={menuItemStyle}
-                  >
-                    <Icon name={icon} size={16} c="var(--text-muted)" />
-                    {label}
-                  </button>
-                ))}
-
-                {quizzes.length > 0 && (
-                  <>
-                    <div
-                      style={{
-                        borderTop: "1px solid var(--border)",
-                        margin: "6px 4px",
-                      }}
-                    />
-                    <div className="rs-eyebrow" style={{ padding: "4px 10px 6px" }}>
-                      Duplicate a quiz
-                    </div>
-                    {quizzes.map(({ quiz }) => (
-                      <button
-                        type="button"
-                        key={quiz.id}
-                        onClick={() => {
-                          setAddMenu(false);
-                          onDuplicate(quiz);
-                        }}
-                        className="rs-navitem"
-                        style={{ ...menuItemStyle, color: "var(--text-secondary)" }}
-                      >
-                        <Icon name="layers" size={15} c="var(--text-muted)" />
-                        <span style={ellipsis}>{quiz.title}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-
-          {modules.length === 0 && (
-            <p
-              style={{
-                fontSize: 12.5,
-                color: "var(--text-muted)",
-                lineHeight: 1.5,
-                margin: "4px 2px 0",
-              }}
+          {/* ---------------------------------------------------- structure -- */}
+          <Card pad={16} style={{ position: "relative" }}>
+            <SectionH
+              action={
+                <button
+                  type="button"
+                  onClick={() => setAddMenu((m) => !m)}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    color: "var(--red)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                  }}
+                >
+                  <Icon name="plus" size={17} c="var(--red)" />
+                  Add
+                </button>
+              }
             >
-              No chapters yet. Use Add → New chapter to start the course.
-            </p>
-          )}
+              Structure
+            </SectionH>
 
-          {modules.map((m) => {
-            const isOpen = open.has(m.id);
-            const items = chapterItems(m);
-            return (
-              <div key={m.id} style={{ marginBottom: 6 }}>
-                <ChapterRow
-                  chapter={m}
-                  title={pendingName?.id === m.id ? pendingName.title : m.title}
-                  count={items.length}
-                  isOpen={isOpen}
-                  renaming={renaming === m.id}
-                  saving={savingName === m.id}
-                  onToggle={() => toggle(m.id)}
-                  onStartRename={() => setRenaming(m.id)}
-                  onCommit={(title) => commitRename(m, title)}
-                  onCancel={() => setRenaming(null)}
+            {addMenu && (
+              <>
+                <div
+                  onClick={() => setAddMenu(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 20 }}
                 />
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 14,
+                    top: 46,
+                    zIndex: 21,
+                    width: 210,
+                    background: "var(--dark-2)",
+                    borderRadius: 12,
+                    boxShadow: "var(--sh-3)",
+                    padding: 6,
+                  }}
+                >
+                  {(
+                    [
+                      ["New clip", "video", () => {
+                        const m = targetModule();
+                        if (m) addClip(m);
+                        else say("Add a chapter first.");
+                      }],
+                      ["New quiz", "zap", () => {
+                        const m = targetModule();
+                        if (m) startNewQuiz(m);
+                        else say("Add a chapter first.");
+                      }],
+                      ["New chapter", "layers", addChapter],
+                    ] as const
+                  ).map(([label, icon, run]) => (
+                    <button
+                      type="button"
+                      key={label}
+                      onClick={() => {
+                        setAddMenu(false);
+                        run();
+                      }}
+                      className="rs-navitem"
+                      style={menuItemStyle}
+                    >
+                      <Icon name={icon} size={16} c="var(--text-muted)" />
+                      {label}
+                    </button>
+                  ))}
 
-                {isOpen && (
-                  <div style={{ paddingLeft: 22 }}>
-                    {items.map((item) =>
-                      item.kind === "quiz" ? (
-                        <QuizRow
-                          key={item.quiz.id}
-                          quiz={item.quiz}
-                          active={
-                            selected?.kind === "quiz" &&
-                            selected.id === item.quiz.id
-                          }
-                          onOpen={() => openQuiz(item.quiz, m)}
-                          onDuplicate={() => onDuplicate(item.quiz)}
-                          onDelete={() => onDeleteQuiz(item.quiz)}
-                        />
-                      ) : (
+                  {quizzes.length > 0 && (
+                    <>
+                      <div
+                        style={{
+                          borderTop: "1px solid var(--border)",
+                          margin: "6px 4px",
+                        }}
+                      />
+                      <div className="rs-eyebrow" style={{ padding: "4px 10px 6px" }}>
+                        Duplicate a quiz
+                      </div>
+                      {quizzes.map(({ quiz }) => (
                         <button
                           type="button"
-                          key={item.lesson.id}
-                          onClick={() =>
-                            setSelected({ kind: "lesson", id: item.lesson.id })
-                          }
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            width: "100%",
-                            padding: "8px 10px",
-                            borderRadius: 9,
-                            border: "none",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontFamily: "var(--font-body)",
-                            fontSize: 12.5,
-                            color: "var(--text-secondary)",
-                            background:
-                              selected?.kind === "lesson" &&
-                              selected.id === item.lesson.id
-                                ? "var(--red-faint)"
-                                : "transparent",
-                            fontWeight:
-                              selected?.kind === "lesson" &&
-                              selected.id === item.lesson.id
-                                ? 700
-                                : 500,
+                          key={quiz.id}
+                          onClick={() => {
+                            setAddMenu(false);
+                            onDuplicate(quiz);
                           }}
+                          className="rs-navitem"
+                          style={{ ...menuItemStyle, color: "var(--text-secondary)" }}
                         >
-                          <Icon
-                            name="video"
-                            size={14}
-                            c={
-                              selected?.kind === "lesson" &&
-                              selected.id === item.lesson.id
-                                ? "var(--red)"
-                                : "var(--text-muted)"
-                            }
-                          />
-                          <span style={ellipsis}>{item.lesson.title}</span>
+                          <Icon name="layers" size={15} c="var(--text-muted)" />
+                          <span style={ellipsis}>{quiz.title}</span>
                         </button>
-                      ),
-                    )}
+                      ))}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
 
-                    {/* Named for the chapter rather than left to the Add menu
-                        at the top: a chapter is created empty, and the next
-                        thing to do with it belongs inside it. */}
-                    <button
-                      type="button"
-                      onClick={() => addClip(m)}
-                      style={addInChapterStyle}
-                    >
-                      <Icon name="plus" size={15} c="var(--red)" />
-                      Add clip to this chapter
-                    </button>
+            {modules.length === 0 && (
+              <p
+                style={{
+                  fontSize: 12.5,
+                  color: "var(--text-muted)",
+                  lineHeight: 1.5,
+                  margin: "4px 2px 0",
+                }}
+              >
+                No chapters yet. Use Add → New chapter to start the course.
+              </p>
+            )}
 
-                    <button
-                      type="button"
-                      onClick={() => startNewQuiz(m)}
-                      style={addInChapterStyle}
-                    >
-                      <Icon name="plus" size={15} c="var(--red)" />
-                      Add quiz to this chapter
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </Card>
+            {modules.map((m) => {
+              const isOpen = open.has(m.id);
+              const items = chapterItems(m);
+              return (
+                <div key={m.id} style={{ marginBottom: 6 }}>
+                  <ChapterRow
+                    chapter={m}
+                    title={pendingName?.id === m.id ? pendingName.title : m.title}
+                    count={items.length}
+                    isOpen={isOpen}
+                    renaming={renaming === m.id}
+                    saving={savingName === m.id}
+                    onToggle={() => toggle(m.id)}
+                    onStartRename={() => setRenaming(m.id)}
+                    onCommit={(title) => commitRename(m, title)}
+                    onCancel={() => setRenaming(null)}
+                  />
+
+                  {isOpen && (
+                    <div style={{ paddingLeft: 22 }}>
+                      {items.map((item) =>
+                        item.kind === "quiz" ? (
+                          <QuizRow
+                            key={item.quiz.id}
+                            quiz={item.quiz}
+                            active={
+                              selected?.kind === "quiz" &&
+                              selected.id === item.quiz.id
+                            }
+                            onOpen={() => openQuiz(item.quiz, m)}
+                            onDuplicate={() => onDuplicate(item.quiz)}
+                            onDelete={() => onDeleteQuiz(item.quiz)}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            key={item.lesson.id}
+                            onClick={() =>
+                              setSelected({ kind: "lesson", id: item.lesson.id })
+                            }
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              width: "100%",
+                              padding: "8px 10px",
+                              borderRadius: 9,
+                              border: "none",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              fontFamily: "var(--font-body)",
+                              fontSize: 12.5,
+                              color: "var(--text-secondary)",
+                              background:
+                                selected?.kind === "lesson" &&
+                                selected.id === item.lesson.id
+                                  ? "var(--red-faint)"
+                                  : "transparent",
+                              fontWeight:
+                                selected?.kind === "lesson" &&
+                                selected.id === item.lesson.id
+                                  ? 700
+                                  : 500,
+                            }}
+                          >
+                            <Icon
+                              name="video"
+                              size={14}
+                              c={
+                                selected?.kind === "lesson" &&
+                                selected.id === item.lesson.id
+                                  ? "var(--red)"
+                                  : "var(--text-muted)"
+                              }
+                            />
+                            <span style={ellipsis}>{item.lesson.title}</span>
+                          </button>
+                        ),
+                      )}
+
+                      {/* Named for the chapter rather than left to the Add menu
+                          at the top: a chapter is created empty, and the next
+                          thing to do with it belongs inside it. */}
+                      <button
+                        type="button"
+                        onClick={() => addClip(m)}
+                        style={addInChapterStyle}
+                      >
+                        <Icon name="plus" size={15} c="var(--red)" />
+                        Add clip to this chapter
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => startNewQuiz(m)}
+                        style={addInChapterStyle}
+                      >
+                        <Icon name="plus" size={15} c="var(--red)" />
+                        Add quiz to this chapter
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Card>
+        </div>
 
         {/* ------------------------------------------------------- detail -- */}
         <div>

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { currentEducatorId } from "./courses";
 import { requireSession } from "./session";
@@ -50,10 +49,19 @@ async function nextPosition(
 
 // ------------------------------------------------------------------ course --
 
+/**
+ * Creating the row.
+ *
+ * Returns the id rather than redirecting, because a cover chosen on this form
+ * cannot be uploaded until the course exists: the storage policy reads the
+ * course id out of the object path to decide who may write there, so there is
+ * no path to write to before the insert lands. The browser uploads, calls
+ * setCourseCover, and navigates — see the form.
+ */
 export async function createCourse(
-  _prev: ActionResult | null,
+  _prev: CreatedResult | null,
   form: FormData,
-): Promise<ActionResult> {
+): Promise<CreatedResult> {
   const session = await requireSession("educator");
   const educatorId = await currentEducatorId();
 
@@ -105,7 +113,36 @@ export async function createCourse(
   }
 
   revalidatePath("/educator/courses");
-  redirect(`/educator/courses/${data.id}`);
+  return { ok: true, id: data.id };
+}
+
+/**
+ * Points a course at its artwork, or clears it.
+ *
+ * The bytes are already in the bucket by the time this runs — the browser puts
+ * them there directly, under a policy that lets only this course's author
+ * write to its folder. All that is left is the column, and re-reading the
+ * pages that draw it.
+ */
+export async function setCourseCover(
+  courseId: string,
+  path: string | null,
+): Promise<ActionResult> {
+  await requireSession("educator");
+  if (!courseId) return { error: "Missing course." };
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("courses")
+    .update({ cover_path: path, updated_at: new Date().toISOString() })
+    .eq("id", courseId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/educator/courses");
+  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath("/admin/courses");
+  return { ok: true };
 }
 
 export async function updateCourseDetails(

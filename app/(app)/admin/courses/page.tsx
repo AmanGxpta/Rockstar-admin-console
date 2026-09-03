@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 import { WebShell } from "@/components/shell";
+import { CoverImage } from "@/components/ui/cover-image";
 import {
   Avatar,
   Card,
   Empty,
-  Ph,
   SectionH,
   Table,
   Tag,
@@ -101,8 +101,8 @@ export default async function AdminCourses() {
               key={course.id}
               style={{ display: "flex", gap: 14, alignItems: "center" }}
             >
-              <Ph
-                icon="image"
+              <CoverImage
+                path={course.cover_path}
                 style={{
                   width: 84,
                   height: 64,
