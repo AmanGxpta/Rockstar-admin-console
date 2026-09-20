@@ -72,6 +72,219 @@ export type Database = {
           },
         ]
       }
+      community_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          is_hidden: boolean
+          post_id: string
+        }
+        Insert: {
+          author_id?: string
+          body: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          post_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_post_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["lesson_block_kind"]
+          path: string
+          position: number
+          post_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["lesson_block_kind"]
+          path: string
+          position?: number
+          post_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["lesson_block_kind"]
+          path?: string
+          position?: number
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_media_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_posts: {
+        Row: {
+          author_id: string
+          caption: string
+          comment_count: number
+          course_id: string | null
+          created_at: string
+          id: string
+          is_hidden: boolean
+          like_count: number
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string
+          caption?: string
+          comment_count?: number
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          like_count?: number
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          caption?: string
+          comment_count?: number
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          like_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_reports: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          handled_at: string | null
+          id: string
+          post_id: string | null
+          reason: string
+          reporter_id: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          handled_at?: string | null
+          id?: string
+          post_id?: string | null
+          reason: string
+          reporter_id?: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          handled_at?: string | null
+          id?: string
+          post_id?: string | null
+          reason?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "community_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -307,6 +520,41 @@ export type Database = {
             columns: ["educator_id"]
             isOneToOne: false
             referencedRelation: "educator_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -754,6 +1002,35 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          display_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          display_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1237,6 +1514,10 @@ export type Database = {
         Args: { p_is_lesson: boolean; p_position: number }
         Returns: number
       }
+      community_post_id_from_object_path: {
+        Args: { p_name: string }
+        Returns: string
+      }
       course_id_from_object_path: { Args: { p_name: string }; Returns: string }
       current_educator_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
@@ -1264,6 +1545,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      forget_push_token: { Args: { p_token: string }; Returns: undefined }
       grant_entitlement: {
         Args: {
           p_course_id: string
@@ -1303,6 +1585,10 @@ export type Database = {
           p_to_index: number
           p_to_module_id: string
         }
+        Returns: undefined
+      }
+      register_push_token: {
+        Args: { p_platform: string; p_token: string }
         Returns: undefined
       }
       request_course_review: {
