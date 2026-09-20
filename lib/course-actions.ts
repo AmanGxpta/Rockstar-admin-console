@@ -519,58 +519,11 @@ export async function setFeatured(form: FormData): Promise<void> {
   revalidatePath(`/admin/courses/${id}`);
 }
 
-/**
- * Rejects a course under review: takes it out of the catalog and sends the
- * reason to the educator's inbox.
- *
- * The message is sent as the Institute (a null sender) rather than as the
- * admin personally — a review decision comes from the school, and an admin
- * has no educator profile to be the sender anyway.
+/*
+ * rejectCourse() lived here. It is gone, not renamed: decide_course_review()
+ * in 0026 does what it did — unpublish, write the reason to the educator's
+ * inbox — and does it in one transaction rather than three PostgREST calls
+ * that could leave a course rejected with nobody told why. It also no longer
+ * unpublishes a live course by default; see the note at the top of that
+ * migration. The server action over it is in lib/review-actions.ts.
  */
-export async function rejectCourse(form: FormData): Promise<void> {
-  await requireSession("admin");
-  const id = str(form, "courseId");
-  const reason = str(form, "reason");
-
-  const supabase = createSupabaseServerClient();
-
-  const { data: course } = await supabase
-    .from("courses")
-    .select("title, educator:educator_profiles ( users ( id ) )")
-    .eq("id", id)
-    .maybeSingle();
-
-  const { error } = await supabase
-    .from("courses")
-    .update({ is_published: false, updated_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (error) {
-    console.error("[courses] reject failed:", error.message);
-    return;
-  }
-
-  const recipientId = (
-    course as { educator?: { users?: { id: string } | null } | null } | null
-  )?.educator?.users?.id;
-
-  if (recipientId && reason) {
-    const { error: messageError } = await supabase.from("inbox_messages").insert({
-      recipient_id: recipientId,
-      sender_id: null,
-      kind: "review",
-      subject: `Changes needed: ${course?.title ?? "your course"}`,
-      preview: reason.slice(0, 140),
-      body: reason,
-    });
-
-    if (messageError) {
-      // The course is already unpublished; losing the note is worth a log
-      // rather than leaving the decision half-applied.
-      console.error("[courses] reject note failed:", messageError.message);
-    }
-  }
-
-  revalidatePath("/admin/courses");
-  revalidatePath(`/admin/courses/${id}`);
-}

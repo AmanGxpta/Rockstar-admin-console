@@ -1,104 +1,188 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+
+import { Toast } from "@/components/ui/controls";
 import { Modal, Textarea, WBtn } from "@/components/ui/primitives";
-import { rejectCourse, setPublished } from "@/lib/course-actions";
+import { setPublished } from "@/lib/course-actions";
+import { decideReview } from "@/lib/review-actions";
+import { awaitingReview, type CourseReviewState } from "@/lib/course-tree";
 
 /**
- * The schema has one flag, `is_published`, not the four-state lifecycle the
- * seed data modelled — so "pending review" is simply a course that is not yet
- * live, and there is no separate archived state. Each confirm posts a form to
- * a server action, which revalidates the route; nothing is refreshed by hand.
+ * The admin's verdict, and the catalog controls either side of it.
+ *
+ * What is on offer is decided by the review state, not by `is_published`. That
+ * is the change 0026 made: before it, "awaiting approval" meant "not published
+ * yet", so Reject was offered on courses nobody had finished — every course
+ * was in the queue from the moment it was named — and a live course had no way
+ * back into review at all.
+ *
+ *   in_review / revised → Approve, or ask for changes
+ *   anything else       → Publish or unpublish, a catalog decision rather than
+ *                         a verdict, and kept separate from one
+ *
+ * Both verdicts go through decide_course_review(), which writes the decision,
+ * the history row and the educator's inbox message in one transaction. The old
+ * rejectCourse() did the same work in three PostgREST calls and could leave a
+ * course unpublished with nobody told why.
  */
 export function CourseActions({
   courseId,
   title,
   isPublished,
+  reviewState,
   educatorName,
 }: {
   courseId: string;
   title: string;
   isPublished: boolean;
+  reviewState: CourseReviewState;
   educatorName: string;
 }) {
-  const [modal, setModal] = useState<"approve" | "reject" | "unpublish" | null>(null);
+  const [modal, setModal] = useState<"approve" | "changes" | "unpublish" | null>(
+    null,
+  );
+  const [note, setNote] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+  const [pending, start] = useTransition();
 
-  if (!isPublished) {
+  const decide = (approve: boolean) => {
+    start(async () => {
+      const result = await decideReview({ courseId, approve, note });
+      if ("error" in result) {
+        setToast(result.error);
+        return;
+      }
+      setModal(null);
+      setNote("");
+      setToast(
+        approve
+          ? "Approved — the course is live and the educator has been told."
+          : "Sent back with your notes.",
+      );
+    });
+  };
+
+  if (awaitingReview(reviewState)) {
     return (
       <>
-        <WBtn kind="ghost" icon="x" sm onClick={() => setModal("reject")}>
-          Reject
+        <WBtn kind="ghost" icon="x" sm onClick={() => setModal("changes")}>
+          Ask for changes
         </WBtn>
         <WBtn icon="check" sm onClick={() => setModal("approve")}>
-          Approve &amp; publish
+          {isPublished ? "Approve changes" : "Approve & publish"}
         </WBtn>
 
         <Modal
           open={modal === "approve"}
           onClose={() => setModal(null)}
-          title="Publish this course"
+          title={isPublished ? "Approve these changes" : "Publish this course"}
+          width={520}
           footer={
             <>
               <WBtn kind="ghost" sm onClick={() => setModal(null)}>
                 Cancel
               </WBtn>
-              <form action={setPublished}>
-                <input type="hidden" name="courseId" value={courseId} />
-                <input type="hidden" name="next" value="true" />
-                <WBtn type="submit" sm>
-                  Approve &amp; publish
-                </WBtn>
-              </form>
+              <WBtn sm disabled={pending} onClick={() => decide(true)}>
+                {pending ? "Approving…" : "Approve"}
+              </WBtn>
             </>
           }
         >
-          <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6, margin: "0 0 14px" }}>
-            The course will go live immediately. {educatorName} will be notified.
-          </p>
-          <div
+          <p
             style={{
-              background: "var(--dark-3)",
-              border: "0.5px solid var(--border)",
-              borderRadius: "var(--r-sm)",
-              padding: "10px 14px",
-              fontFamily: "monospace",
-              fontSize: 12.5,
-              color: "var(--cream-3)",
+              fontSize: 13.5,
+              color: "var(--text-secondary)",
+              lineHeight: 1.65,
+              margin: "0 0 14px",
             }}
           >
-            {title}
+            {isPublished
+              ? `${title} stays live, and the changes since it was last approved are signed off. ${educatorName} will be told.`
+              : `${title} goes into the catalog immediately. ${educatorName} will be told.`}
+          </p>
+
+          <div className="rs-label" style={{ marginBottom: 8 }}>
+            A note with the approval (optional)
           </div>
+          <Textarea
+            value={note}
+            onChange={setNote}
+            rows={3}
+            placeholder="Lovely work on chapter 2…"
+          />
         </Modal>
 
         <Modal
-          open={modal === "reject"}
+          open={modal === "changes"}
           onClose={() => setModal(null)}
-          title="Reject course"
+          title="Send this back"
           width={520}
-        >
-          <form action={rejectCourse} id="reject-form">
-            <input type="hidden" name="courseId" value={courseId} />
-            <div className="rs-label" style={{ marginBottom: 8 }}>
-              Reason for rejection
-            </div>
-            <Textarea
-              name="reason"
-              placeholder="What needs to change before this can be approved?"
-              rows={4}
-            />
-            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "10px 0 14px" }}>
-              This message will be sent to {educatorName}.
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          footer={
+            <>
               <WBtn kind="ghost" sm onClick={() => setModal(null)}>
                 Cancel
               </WBtn>
-              <WBtn type="submit" sm>
-                Reject &amp; notify
+              <WBtn
+                sm
+                disabled={pending || !note.trim()}
+                onClick={() => decide(false)}
+              >
+                {pending ? "Sending…" : "Send back"}
               </WBtn>
-            </div>
-          </form>
+            </>
+          }
+        >
+          <div className="rs-label" style={{ marginBottom: 8 }}>
+            What needs to change?
+          </div>
+          <Textarea
+            value={note}
+            onChange={setNote}
+            rows={4}
+            placeholder="The Image ID questions in chapter 3 have no pictures on them…"
+          />
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--text-muted)",
+              margin: "10px 0 0",
+              lineHeight: 1.6,
+            }}
+          >
+            This goes to {educatorName}&rsquo;s inbox and sits at the top of
+            their editor until they send the course again. The note is required,
+            here and in the database: a course sent back with no reason is a
+            course nobody knows how to fix.
+            {isPublished ? (
+              <>
+                {" "}
+                <b>{title} stays live in the meantime</b>, so students
+                mid-course are not cut off. Unpublish it separately if that is
+                what you mean.
+              </>
+            ) : null}
+          </p>
         </Modal>
+
+        <Toast message={toast} />
+      </>
+    );
+  }
+
+  if (!isPublished) {
+    return (
+      <>
+        <span
+          style={{
+            fontSize: 12.5,
+            color: "var(--text-muted)",
+            alignSelf: "center",
+          }}
+        >
+          Nothing to decide — {educatorName} has not sent this in yet.
+        </span>
+        <Toast message={toast} />
       </>
     );
   }
@@ -128,11 +212,20 @@ export function CourseActions({
           </>
         }
       >
-        <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+        <p
+          style={{
+            fontSize: 13.5,
+            color: "var(--text-secondary)",
+            lineHeight: 1.6,
+            margin: 0,
+          }}
+        >
           {title} will leave the catalog. Students already enrolled keep their
           access and their progress.
         </p>
       </Modal>
+
+      <Toast message={toast} />
     </>
   );
 }

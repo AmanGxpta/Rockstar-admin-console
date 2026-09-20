@@ -13,6 +13,7 @@ import {
   type Col,
 } from "@/components/ui/primitives";
 import { setFeatured, setPublished } from "@/lib/course-actions";
+import { REVIEW_STATE, awaitingReview } from "@/lib/course-tree";
 import { formatDuration, listCourses, type CourseListRow } from "@/lib/courses";
 import { requireSession } from "@/lib/session";
 
@@ -68,23 +69,26 @@ export default async function AdminCourses() {
   const session = await requireSession("admin");
   const courses = await listCourses();
 
-  // There is no separate "pending" flag in the schema — a course awaiting
-  // review is simply one that is not yet published.
-  const pending = courses.filter((c) => !c.is_published);
+  // The queue is courses whose authors have handed them over, plus live ones
+  // that have changed since they were approved — not, as it was before 0026,
+  // every unpublished row. A course somebody started this morning and has
+  // written two chapter titles into is not waiting on an admin, and listing it
+  // as though it were is how a review queue stops being read.
+  const pending = courses.filter((c) => awaitingReview(c.review_state));
   const live = courses.filter((c) => c.is_published);
 
   return (
     <WebShell
       session={session}
       title="Course catalog"
-      sub={`${live.length} live · ${pending.length} awaiting approval`}
+      sub={`${live.length} live · ${pending.length} waiting on you`}
     >
       <SectionH>Awaiting approval</SectionH>
       {pending.length === 0 ? (
         <Card style={{ marginBottom: 24 }}>
           <Empty
             title="Nothing waiting on you"
-            hint="A course lands here as soon as an educator starts one — it stays a draft until you publish it."
+            hint="A course lands here when its educator sends it in, or when a live one is edited after approval."
           />
         </Card>
       ) : (
@@ -118,29 +122,34 @@ export default async function AdminCourses() {
                   style={{
                     fontSize: 12,
                     color: "var(--text-secondary)",
-                    margin: "3px 0 10px",
+                    margin: "3px 0 8px",
                   }}
                 >
-                  {educatorName(course)} · updated {formatDate(course.updated_at)}{" "}
-                  · {course.lesson_count} lessons
+                  {educatorName(course)} ·{" "}
+                  {course.review_requested_at
+                    ? `sent ${formatDate(course.review_requested_at)}`
+                    : `updated ${formatDate(course.updated_at)}`}{" "}
+                  · {course.lesson_count} clips
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <Tag tone={REVIEW_STATE[course.review_state].tone}>
+                    {REVIEW_STATE[course.review_state].admin}
+                  </Tag>
+                  {/*
+                    The one-click Approve that used to sit here is gone on
+                    purpose. It published a course without anybody having
+                    opened it, which is the thing 2683 is about: approving now
+                    means going in and reading it, and the verdict lives on
+                    that page beside the material it is a verdict on.
+                  */}
                   <Link
                     href={`/admin/courses/${course.id}`}
-                    style={{ textDecoration: "none" }}
+                    style={{ textDecoration: "none", marginLeft: "auto" }}
                   >
-                    <WBtn kind="ghost" sm>
-                      Review
+                    <WBtn sm icon="eye">
+                      Review it
                     </WBtn>
                   </Link>
-                  <ToggleForm
-                    action={setPublished}
-                    courseId={course.id}
-                    next
-                    label="Approve"
-                    kind="primary"
-                    icon="check2"
-                  />
                 </div>
               </div>
             </Card>
@@ -187,8 +196,21 @@ export default async function AdminCourses() {
                     {educatorName(course)}
                   </span>
                 </div>,
-                <Tag key="status" tone={course.is_featured ? "gold" : "leaf"}>
-                  {course.is_featured ? "Featured" : "Live"}
+                <Tag
+                  key="status"
+                  tone={
+                    awaitingReview(course.review_state)
+                      ? REVIEW_STATE[course.review_state].tone
+                      : course.is_featured
+                        ? "gold"
+                        : "leaf"
+                  }
+                >
+                  {awaitingReview(course.review_state)
+                    ? REVIEW_STATE[course.review_state].admin
+                    : course.is_featured
+                      ? "Featured"
+                      : "Live"}
                 </Tag>,
                 course.lesson_count,
                 course.enrolled_count.toLocaleString(),

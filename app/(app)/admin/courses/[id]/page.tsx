@@ -3,11 +3,24 @@ import { notFound } from "next/navigation";
 
 import { WebShell } from "@/components/shell";
 import { Icon } from "@/components/ui/icon";
-import { Avatar, Badge, Card, SectionH } from "@/components/ui/primitives";
-import { formatDuration, getCourseForEditor } from "@/lib/courses";
+import { Avatar, Card, SectionH, Tag } from "@/components/ui/primitives";
+import { CourseReviewView } from "@/components/review/course-review-view";
+import { ReviewHistory } from "@/components/review/review-history";
+import { getCourseForReview } from "@/lib/course-review";
+import { REVIEW_STATE, awaitingReview } from "@/lib/course-tree";
+import { formatDuration } from "@/lib/courses";
 import { requireSession } from "@/lib/session";
 
 import { CourseActions } from "./course-actions";
+
+function when(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default async function AdminCourseDetail({
   params,
@@ -17,12 +30,23 @@ export default async function AdminCourseDetail({
   const session = await requireSession("admin");
   const { id } = await params;
 
-  // The same tree the educator's editor reads — an admin reviewing a course
-  // should see exactly what was built, chapters and lessons included.
-  const course = await getCourseForEditor(id);
-  if (!course) notFound();
+  /*
+    The whole course, not a table of contents.
 
+    This page used to render chapter titles, lesson titles and a block count,
+    which meant "approve" was a judgement on a list of headings: a reviewer
+    could not watch a clip, read a caption, see which answer a quiz counts as
+    correct, tell whether the Image ID questions had pictures on them, or find
+    out what the final exam asked. getCourseForReview() pulls the tree, the
+    exam and its bank, the handouts and the review history, and signs every
+    private object in one call per bucket.
+  */
+  const data = await getCourseForReview(id);
+  if (!data) notFound();
+
+  const { course, exam, resources } = data;
   const educatorName = course.educator?.users?.full_name ?? "Unassigned";
+  const state = REVIEW_STATE[course.review_state];
   const lessonCount = course.course_modules.reduce(
     (total, module) => total + module.lessons.length,
     0,
@@ -32,12 +56,13 @@ export default async function AdminCourseDetail({
     <WebShell
       session={session}
       title={course.title}
-      sub={course.category}
+      sub={`${educatorName} · ${course.category}`}
       actions={
         <CourseActions
           courseId={course.id}
           title={course.title}
           isPublished={course.is_published}
+          reviewState={course.review_state}
           educatorName={educatorName}
         />
       }
@@ -61,75 +86,96 @@ export default async function AdminCourseDetail({
       </Link>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
-        <div>
-          <Card style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <Badge tone={course.is_published ? "complete" : "locked"}>
-                {course.is_published ? "Live" : "Draft"}
-              </Badge>
-            </div>
-            <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>
-              {course.overview || "No overview written yet."}
-            </p>
-          </Card>
-
-          <Card>
-            <SectionH>Curriculum</SectionH>
-            {course.course_modules.length === 0 && (
-              <p style={{ fontSize: 13.5, color: "var(--text-muted)", margin: "12px 0 0" }}>
-                No chapters yet.
-              </p>
-            )}
-            {course.course_modules.map((module, i) => (
-              <div
-                key={module.id}
-                style={{
-                  padding: "14px 4px",
-                  borderBottom:
-                    i < course.course_modules.length - 1
-                      ? "0.5px solid var(--border)"
-                      : "none",
-                }}
-              >
+        <div style={{ minWidth: 0 }}>
+          {/*
+            Why this course is on screen, before any of the course itself.
+            An automatic request and one the educator sent deliberately need
+            reading differently — the first means a live course drifted, the
+            second means somebody is waiting on an answer.
+          */}
+          {awaitingReview(course.review_state) && (
+            <Card
+              style={{
+                marginBottom: 16,
+                borderLeft: "3px solid var(--warn)",
+                display: "flex",
+                gap: 12,
+              }}
+            >
+              <Icon name="clock" size={17} c="var(--warn)" />
+              <div>
                 <div className="rs-label" style={{ marginBottom: 6 }}>
-                  Chapter {String(module.position).padStart(2, "0")}
+                  {course.review_state === "in_review"
+                    ? `${educatorName} sent this in on ${when(course.review_requested_at)}`
+                    : `Live, and edited since it was approved — ${when(course.review_requested_at)}`}
                 </div>
-                <div style={{ fontSize: 14, color: "var(--text-primary)", marginBottom: 8 }}>
-                  {module.title}
-                </div>
-                {module.lessons.map((lesson) => (
-                  <div
-                    key={lesson.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "5px 0 5px 14px",
-                      fontSize: 13,
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <span>
-                      {lesson.position}. {lesson.title}
-                      {lesson.is_preview ? " · preview" : ""}
-                    </span>
-                    <span className="rs-word" style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                      {lesson.lesson_blocks.length} blocks ·{" "}
-                      {formatDuration(lesson.duration_seconds)}
-                    </span>
-                  </div>
-                ))}
+                <p
+                  style={{
+                    fontSize: 13.5,
+                    color: "var(--text-secondary)",
+                    lineHeight: 1.7,
+                    margin: 0,
+                  }}
+                >
+                  {course.review_state === "in_review"
+                    ? "The course is locked to its author while it is with you, so what is below will not move under you."
+                    : "Nobody has signed off on the current version, and students are reading it now. Its author can still edit it — a course that drifted is one somebody is still working on."}
+                </p>
               </div>
-            ))}
-          </Card>
+            </Card>
+          )}
+
+          <CourseReviewView data={data} />
+
+          <div style={{ marginTop: 22 }}>
+            <ReviewHistory history={data.history} />
+          </div>
         </div>
 
         <div>
           <Card style={{ marginBottom: 16 }}>
+            <SectionH>Status</SectionH>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+              <Tag tone={state.tone}>{state.admin}</Tag>
+              <Tag tone={course.is_published ? "leaf" : "ink"}>
+                {course.is_published ? "In the catalog" : "Not published"}
+              </Tag>
+              {course.is_featured && <Tag tone="gold">Featured</Tag>}
+            </div>
+            {[
+              ["Sent in", when(course.review_requested_at)],
+              ["Last decided", when(course.reviewed_at)],
+              ["Last edited", when(course.updated_at)],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "9px 0",
+                  borderBottom: "0.5px solid var(--border)",
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: "var(--text-muted)" }}>{label}</span>
+                <span style={{ color: "var(--text-secondary)" }}>{value}</span>
+              </div>
+            ))}
+          </Card>
+
+          <Card style={{ marginBottom: 16 }}>
             <SectionH>Stats</SectionH>
             {[
               ["Chapters", String(course.course_modules.length)],
-              ["Lessons", String(lessonCount)],
+              ["Clips", String(lessonCount)],
+              [
+                "Quizzes",
+                String(
+                  course.course_modules.reduce((n, m) => n + m.quizzes.length, 0),
+                ),
+              ],
+              ["Exam bank", String(exam.bank.length)],
+              ["Handouts", String(resources.length)],
               ["Total length", formatDuration(course.total_duration_seconds)],
               ["Enrolled", course.enrolled_count.toLocaleString()],
               [

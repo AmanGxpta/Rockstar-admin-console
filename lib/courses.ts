@@ -8,6 +8,7 @@ import type {
   CourseForEditor,
   CourseLevel,
   CourseListRow,
+  CourseReview,
   LessonBlockKind,
 } from "./course-tree";
 
@@ -61,6 +62,7 @@ const LIST_SELECT = `
   id, title, subtitle, category, level, is_published, is_featured,
   cover_path, price_cents, lesson_count, total_duration_seconds, enrolled_count,
   created_at, updated_at,
+  review_state, review_requested_at, reviewed_at, review_note,
   educator:educator_profiles ( id, users ( full_name ) )
 `;
 
@@ -132,6 +134,34 @@ export async function getCourseForEditor(
   }
 
   return course;
+}
+
+/**
+ * Every review this course has been through, newest first.
+ *
+ * Read separately from the tree rather than embedded in it: the editor and the
+ * catalog both load the tree on every navigation and neither draws the
+ * history, so putting it in LIST_SELECT would pull a growing list of rows into
+ * a query that is on the hot path for both roles.
+ */
+export async function getCourseReviews(
+  courseId: string,
+): Promise<CourseReview[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("course_reviews")
+    .select(
+      "id, requested_at, request_note, origin, state, decided_at, decision_note",
+    )
+    .eq("course_id", courseId)
+    .order("requested_at", { ascending: false });
+
+  if (error) {
+    // A history that will not load is not worth 500ing the page it annotates.
+    console.error("[courses] review history failed:", error.message);
+    return [];
+  }
+  return (data ?? []) as unknown as CourseReview[];
 }
 
 export function formatDuration(seconds: number): string {

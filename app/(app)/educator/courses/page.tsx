@@ -4,17 +4,20 @@ import { WebShell } from "@/components/shell";
 import { Icon } from "@/components/ui/icon";
 import { CoverImage } from "@/components/ui/cover-image";
 import { Card, Empty, Tag, WBtn } from "@/components/ui/primitives";
+import { REVIEW_STATE, awaitingReview } from "@/lib/course-tree";
 import { formatDuration, listCourses } from "@/lib/courses";
 import { requireSession } from "@/lib/session";
 
 /**
  * The design's fourth chip is "Archived". There is no archived state in the
- * schema — a course is published or it is not — so the filter offers the three
- * that exist rather than a tab that can never fill.
+ * schema, so the filter offers what exists rather than a tab that can never
+ * fill — and since 0026 that includes "with an admin", which is the one an
+ * educator actually wants: it answers "what am I waiting on?".
  */
 const FILTERS = [
   { value: "all", label: "All" },
   { value: "published", label: "Published" },
+  { value: "review", label: "With an admin" },
   { value: "drafts", label: "Drafts" },
 ] as const;
 
@@ -37,9 +40,11 @@ export default async function EducatorCourses({
   const courses = all.filter((c) =>
     active === "published"
       ? c.is_published
-      : active === "drafts"
-        ? !c.is_published
-        : true,
+      : active === "review"
+        ? awaitingReview(c.review_state)
+        : active === "drafts"
+          ? !c.is_published
+          : true,
   );
 
   return (
@@ -89,7 +94,7 @@ export default async function EducatorCourses({
             }
             hint={
               all.length === 0
-                ? "Start one with New course. It stays a draft until an admin publishes it."
+                ? "Start one with New course. When it is ready you send it to an admin, who reads it and publishes it."
                 : "Try another tab."
             }
           />
@@ -119,8 +124,24 @@ export default async function EducatorCourses({
                       marginBottom: 8,
                     }}
                   >
-                    <Tag tone={course.is_published ? "leaf" : "ink"}>
-                      {course.is_published ? "Published" : "Draft"}
+                    {/*
+                      The review state, not the publish flag. "Draft" on a
+                      course that has been sitting with an admin for three days
+                      is the wrong answer to the question the author is asking
+                      when they open this page.
+                    */}
+                    <Tag
+                      tone={
+                        course.is_published &&
+                        course.review_state === "approved"
+                          ? "leaf"
+                          : REVIEW_STATE[course.review_state].tone
+                      }
+                    >
+                      {course.is_published &&
+                      course.review_state === "approved"
+                        ? "Published"
+                        : REVIEW_STATE[course.review_state].educator}
                     </Tag>
                     <Tag tone="clay">{course.level}</Tag>
                   </div>
@@ -174,7 +195,23 @@ export default async function EducatorCourses({
                     </span>
                   </div>
 
-                  {course.is_published ? (
+                  {awaitingReview(course.review_state) ? (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--warn)",
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Icon name="clock" size={14} c="var(--warn)" />
+                      {course.review_state === "in_review"
+                        ? "Locked while an admin reads it"
+                        : "Changes not signed off yet"}
+                    </div>
+                  ) : course.is_published ? (
                     <div
                       style={{
                         fontSize: 12,

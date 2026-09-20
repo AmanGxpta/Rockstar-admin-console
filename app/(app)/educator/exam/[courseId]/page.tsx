@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { WebShell } from "@/components/shell";
+import { editsLocked } from "@/lib/course-tree";
 import { getCourseForEditor } from "@/lib/courses";
 import { getExamForCourse } from "@/lib/exams";
 import { requireSession } from "@/lib/session";
@@ -20,6 +21,14 @@ export default async function ExamBuilderPage({
   // come back as a silently empty bank.
   const course = await getCourseForEditor(courseId);
   if (!course) notFound();
+
+  // The editor hides the link into here while a course is with a reviewer, but
+  // the route is still typeable. Every write on this screen would be refused
+  // by 0026's lock, so the author is sent back to the course rather than left
+  // to discover it one save at a time.
+  if (editsLocked(course.review_state)) {
+    redirect(`/educator/courses/${courseId}`);
+  }
 
   const { settings, bank } = await getExamForCourse(courseId);
 

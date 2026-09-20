@@ -6,11 +6,13 @@
  * and grade the same tree in the browser.
  */
 import type { Database } from "@/types/database";
+import type { TagTone } from "@/components/ui/primitives";
 
 export type CourseCategory = Database["public"]["Enums"]["course_category"];
 export type CourseLevel = Database["public"]["Enums"]["course_level"];
 export type LessonBlockKind = Database["public"]["Enums"]["lesson_block_kind"];
 export type QuizQuestionType = Database["public"]["Enums"]["quiz_question_type"];
+export type CourseReviewState = Database["public"]["Enums"]["course_review_state"];
 
 export type EditorBlock = {
   id: string;
@@ -198,6 +200,68 @@ export function quizReady(quiz: EditorQuiz): boolean {
   );
 }
 
+// ------------------------------------------------------------------ review --
+
+/**
+ * How a review state reads on screen, for whom.
+ *
+ * Two dictionaries because the same state is two different facts. `in_review`
+ * is "with the reviewer, you cannot edit" to its author and "waiting on you"
+ * to the admin; `revised` is "your changes have not been signed off" to one
+ * and "this live course has drifted" to the other. One shared label would have
+ * to be vague enough to be true for both, which is how a status line stops
+ * meaning anything.
+ */
+export const REVIEW_STATE: Record<
+  CourseReviewState,
+  { tone: TagTone; educator: string; admin: string }
+> = {
+  draft: { tone: "ink", educator: "Draft", admin: "Draft" },
+  in_review: {
+    tone: "gold",
+    educator: "With an admin for review",
+    admin: "Waiting on you",
+  },
+  approved: { tone: "leaf", educator: "Approved", admin: "Approved" },
+  changes_requested: {
+    tone: "rose",
+    educator: "Changes needed",
+    admin: "Changes requested",
+  },
+  revised: {
+    tone: "gold",
+    educator: "Edited since approval",
+    admin: "Edited since approval",
+  },
+};
+
+/** The two states that put a course on the reviewer's desk. */
+export function awaitingReview(state: CourseReviewState): boolean {
+  return state === "in_review" || state === "revised";
+}
+
+/**
+ * Whether the author is locked out.
+ *
+ * Only `in_review`, and that is the whole point of 0026 having five states
+ * rather than four: `revised` is also in the queue, but it was reached by the
+ * author's own edit rather than by them saying they had finished, so locking
+ * on it would reject the second of any two-statement save.
+ */
+export function editsLocked(state: CourseReviewState): boolean {
+  return state === "in_review";
+}
+
+export type CourseReview = {
+  id: string;
+  requested_at: string;
+  request_note: string | null;
+  origin: "manual" | "content_change";
+  state: "open" | "approved" | "changes_requested" | "withdrawn";
+  decided_at: string | null;
+  decision_note: string | null;
+};
+
 export type CourseListRow = {
   id: string;
   title: string;
@@ -214,6 +278,11 @@ export type CourseListRow = {
   enrolled_count: number;
   created_at: string;
   updated_at: string;
+  review_state: CourseReviewState;
+  review_requested_at: string | null;
+  reviewed_at: string | null;
+  /** The last thing a reviewer said. Null once the author sends it again. */
+  review_note: string | null;
   educator: { id: string; users: { full_name: string | null } | null } | null;
 };
 

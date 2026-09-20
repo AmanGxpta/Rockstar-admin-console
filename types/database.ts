@@ -101,6 +101,127 @@ export type Database = {
           },
         ]
       }
+      course_resources: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          kind: Database["public"]["Enums"]["resource_kind"]
+          mime_type: string | null
+          module_id: string | null
+          path: string
+          position: number
+          size_bytes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["resource_kind"]
+          mime_type?: string | null
+          module_id?: string | null
+          path: string
+          position?: number
+          size_bytes?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["resource_kind"]
+          mime_type?: string | null
+          module_id?: string | null
+          path?: string
+          position?: number
+          size_bytes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_resources_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_resources_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_reviews: {
+        Row: {
+          course_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          origin: string
+          request_note: string | null
+          requested_at: string
+          requested_by: string
+          state: string
+        }
+        Insert: {
+          course_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          origin?: string
+          request_note?: string | null
+          requested_at?: string
+          requested_by: string
+          state?: string
+        }
+        Update: {
+          course_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          origin?: string
+          request_note?: string | null
+          requested_at?: string
+          requested_by?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_reviews_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_reviews_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_reviews_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           accent: string
@@ -119,6 +240,10 @@ export type Database = {
           overview: string
           price_cents: number | null
           rating: number | null
+          review_note: string | null
+          review_requested_at: string | null
+          review_state: Database["public"]["Enums"]["course_review_state"]
+          reviewed_at: string | null
           subtitle: string | null
           title: string
           total_duration_seconds: number
@@ -141,6 +266,10 @@ export type Database = {
           overview?: string
           price_cents?: number | null
           rating?: number | null
+          review_note?: string | null
+          review_requested_at?: string | null
+          review_state?: Database["public"]["Enums"]["course_review_state"]
+          reviewed_at?: string | null
           subtitle?: string | null
           title: string
           total_duration_seconds?: number
@@ -163,6 +292,10 @@ export type Database = {
           overview?: string
           price_cents?: number | null
           rating?: number | null
+          review_note?: string | null
+          review_requested_at?: string | null
+          review_state?: Database["public"]["Enums"]["course_review_state"]
+          reviewed_at?: string | null
           subtitle?: string | null
           title?: string
           total_duration_seconds?: number
@@ -1111,6 +1244,10 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      decide_course_review: {
+        Args: { p_approve: boolean; p_course_id: string; p_note?: string }
+        Returns: undefined
+      }
       enroll_in_course: {
         Args: { p_course_id: string }
         Returns: {
@@ -1168,6 +1305,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_course_review: {
+        Args: { p_course_id: string; p_note?: string }
+        Returns: undefined
+      }
       renumber_chapter: { Args: { p_module_id: string }; Returns: undefined }
       review_submission: {
         Args: {
@@ -1204,6 +1345,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      withdraw_course_review: { Args: { p_course_id: string }; Returns: undefined }
     }
     Enums: {
       course_category:
@@ -1213,12 +1355,27 @@ export type Database = {
         | "editorial"
         | "business"
       course_level: "beginner" | "intermediate" | "advanced"
+      course_review_state:
+        | "draft"
+        | "in_review"
+        | "approved"
+        | "changes_requested"
+        | "revised"
       entitlement_source: "free" | "purchase" | "admin_grant"
       entitlement_status: "active" | "expired" | "revoked"
       inbox_message_kind: "feedback" | "announcement" | "review"
       lesson_block_kind: "video" | "text" | "image" | "pdf" | "embed"
       purchase_status: "pending" | "paid" | "failed" | "refunded" | "cancelled"
       quiz_question_type: "mc" | "multi" | "image" | "order"
+      resource_kind:
+        | "pdf"
+        | "document"
+        | "sheet"
+        | "slides"
+        | "image"
+        | "audio"
+        | "video"
+        | "archive"
       submission_status: "pending" | "approved" | "needs_revision"
       user_role: "student" | "educator" | "admin" | "super-admin"
     }
@@ -1350,6 +1507,13 @@ export const Constants = {
     Enums: {
       course_category: ["color", "cutting", "styling", "editorial", "business"],
       course_level: ["beginner", "intermediate", "advanced"],
+      course_review_state: [
+        "draft",
+        "in_review",
+        "approved",
+        "changes_requested",
+        "revised",
+      ],
       entitlement_source: ["free", "purchase", "admin_grant"],
       entitlement_status: ["active", "expired", "revoked"],
       inbox_message_kind: ["feedback", "announcement", "review"],
