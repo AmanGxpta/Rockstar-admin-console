@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 
@@ -95,15 +95,29 @@ function objectPath(courseId: string, lessonId: string, file: File): string {
  * length. The file already knows, and asking it costs one metadata load.
  * Returns null when the browser cannot decode the container — the author can
  * still type the minutes.
+ *
+ * Bounded, because `loadedmetadata` is not guaranteed to arrive at all: a
+ * browser that is throttling a background tab simply never decodes, and an
+ * unbounded wait leaves the upload that is already in the bucket showing
+ * "Uploading…" for as long as the panel stays open. A missing duration is a
+ * number the trigger recomputes; a stuck panel is a file the author cannot
+ * save.
  */
+const DURATION_PROBE_MS = 10_000;
+
 export function readVideoDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");
+    let settled = false;
     const done = (value: number | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
       resolve(value);
     };
+    const timer = setTimeout(() => done(null), DURATION_PROBE_MS);
     video.preload = "metadata";
     video.onloadedmetadata = () =>
       done(Number.isFinite(video.duration) ? Math.round(video.duration) : null);
@@ -170,6 +184,82 @@ export function useMediaUpload(courseId: string, lessonId: string) {
       },
     };
   };
+}
+
+/**
+ * How long a preview URL is good for.
+ *
+ * The editor signs one object at a time, when a clip is selected, so this only
+ * has to outlast someone reading a panel and pressing Save. An hour is
+ * Storage's own default and long enough that a paused video keeps playing.
+ */
+const PREVIEW_URL_TTL_SECONDS = 60 * 60;
+
+export type SignedMedia = {
+  url: string | null;
+  loading: boolean;
+  error: string | null;
+};
+
+/**
+ * A URL the browser can actually render, for an object path held on a block.
+ *
+ * `course-media` is private (0009), so a stored path is not a URL and an
+ * `<img>` or `<video>` pointed at one gets a 400. Signing happens here, in the
+ * browser and as the author, because the same read policy that lets the
+ * console show a clip is the one that will let a student watch it — a preview
+ * that renders is evidence the object landed and is readable, which a local
+ * `blob:` of the file just chosen would not be.
+ *
+ * Absolute URLs pass through untouched: an `embed` block holds someone else's
+ * link, not a path into our bucket.
+ */
+export function useSignedMediaUrl(path: string | null | undefined): SignedMedia {
+  const supabase = useSupabaseBrowserClient();
+  // Keyed by the path it answers, so a result that lands after the author has
+  // moved to another clip is ignored rather than shown against the wrong file.
+  const [resolved, setResolved] = useState<{
+    path: string;
+    url: string | null;
+    error: string | null;
+  } | null>(null);
+
+  const external = !!path && /^(https?:)?\/\//i.test(path);
+
+  useEffect(() => {
+    // Nothing to sign: no file, or someone else's link. Both are answered in
+    // the derivation below, without a round trip and without a render.
+    if (!path || external) return;
+
+    let live = true;
+    void supabase.storage
+      .from("course-media")
+      .createSignedUrl(path, PREVIEW_URL_TTL_SECONDS)
+      .then(({ data, error }) => {
+        if (!live) return;
+        setResolved({
+          path,
+          url: data?.signedUrl ?? null,
+          error: data?.signedUrl
+            ? null
+            : // A missing object and a refused read both land here; the author
+              // can act on either, and neither is worth the raw
+              // "Object not found" string.
+              error?.message && /not found/i.test(error.message)
+              ? "That file is no longer in storage."
+              : "Could not load this file for preview.",
+        });
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [supabase, path, external]);
+
+  if (!path) return { url: null, loading: false, error: null };
+  if (external) return { url: path, loading: false, error: null };
+  if (resolved?.path !== path) return { url: null, loading: true, error: null };
+  return { url: resolved.url, loading: false, error: resolved.error };
 }
 
 // ------------------------------------------------------------------ covers --

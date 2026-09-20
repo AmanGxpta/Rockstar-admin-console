@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 
 import { CoverEditor } from "@/components/ui/cover-picker";
 import { Icon } from "@/components/ui/icon";
-import { Card, Ph, SectionH, Tag, WBtn } from "@/components/ui/primitives";
+import { Card, SectionH, Tag, WBtn } from "@/components/ui/primitives";
 import { Toast } from "@/components/ui/controls";
 import { addLesson, addModule, renameModule } from "@/lib/course-actions";
 import { coverPublicUrl } from "@/lib/course-cover";
@@ -1170,43 +1170,11 @@ function ClipDetail({
       <SectionH action={<Tag tone="leaf">{chapterTitle}</Tag>}>
         Editing clip
       </SectionH>
-      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 18 }}>
-        <Ph
-          dark
-          icon="video"
-          style={{ height: 300, borderRadius: 14, aspectRatio: "9/16" }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.9)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Icon name="play" size={22} c="var(--red)" />
-            </div>
-          </div>
-        </Ph>
-
-        <div>
-          {/* Keyed on the clip so switching selection resets the fields to the
-              clip you moved to, rather than carrying the last one's edits. */}
-          <ClipForm key={lesson.id} courseId={courseId} lesson={lesson} />
-        </div>
-      </div>
+      {/* Keyed on the clip so switching selection resets the fields — and the
+          preview — to the clip you moved to, rather than carrying the last
+          one's edits. ClipForm lays out its own preview column: the file it
+          shows is form state until Save. */}
+      <ClipForm key={lesson.id} courseId={courseId} lesson={lesson} />
     </Card>
   );
 }

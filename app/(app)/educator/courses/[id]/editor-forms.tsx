@@ -20,6 +20,7 @@ import {
 import type { EditorLesson, LessonBlockKind } from "@/lib/course-tree";
 import type { UploadedMedia } from "@/lib/media-upload";
 
+import { ClipPreview } from "./clip-preview";
 import { MediaDropZone } from "./media-picker";
 
 /**
@@ -152,156 +153,164 @@ export function ClipForm({
   const formatLabel = FORMATS.find((f) => f.value === kind)?.label ?? "Video";
 
   return (
-    <>
-      <Label>Clip title</Label>
-      <TextInput value={title} onChange={setTitle} placeholder="Untitled clip" />
+    // The preview sits inside the form, not beside it in ClipDetail, because
+    // what it shows is this component's state: the file an author has just
+    // dropped is attached here and not saved anywhere yet, and a box rendered
+    // one level up could only ever show what the last save left behind.
+    <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 18 }}>
+      <ClipPreview path={url} kind={kind} fileName={fileName} />
 
-      <div style={{ marginTop: 16 }}>
-        <Label>Caption</Label>
-        <Textarea
-          value={caption}
-          onChange={setCaption}
-          rows={3}
-          placeholder="What the student should notice in this clip."
-        />
-      </div>
+      <div style={{ minWidth: 0 }}>
+        <Label>Clip title</Label>
+        <TextInput value={title} onChange={setTitle} placeholder="Untitled clip" />
 
-      <div style={{ marginTop: 16 }}>
-        <Label hint={duration !== null ? clock(duration) : undefined}>Format</Label>
-        <Select options={FORMATS} value={kind} onChange={setKind} />
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            marginTop: 7,
-            fontSize: 12,
-            color: url ? "var(--text-secondary)" : "var(--text-muted)",
-            minWidth: 0,
-          }}
-        >
-          <Icon
-            name={url ? "check2" : "upload"}
-            size={13}
-            c={url ? "var(--success)" : "var(--text-muted)"}
+        <div style={{ marginTop: 16 }}>
+          <Label>Caption</Label>
+          <Textarea
+            value={caption}
+            onChange={setCaption}
+            rows={3}
+            placeholder="What the student should notice in this clip."
           />
-          <span
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <Label hint={duration !== null ? clock(duration) : undefined}>Format</Label>
+          <Select options={FORMATS} value={kind} onChange={setKind} />
+          <div
             style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              marginTop: 7,
+              fontSize: 12,
+              color: url ? "var(--text-secondary)" : "var(--text-muted)",
+              minWidth: 0,
             }}
           >
-            {url
-              ? `${formatLabel} attached — ${fileName ?? url.split("/").pop()}`
-              : "Nothing attached yet — drop a file below."}
-          </span>
-          {url && (
-            <button
-              type="button"
-              onClick={() => {
-                setUrl(null);
-                setDuration(null);
-                setFileName(null);
-              }}
+            <Icon
+              name={url ? "check2" : "upload"}
+              size={13}
+              c={url ? "var(--success)" : "var(--text-muted)"}
+            />
+            <span
               style={{
-                marginLeft: "auto",
-                border: "none",
-                background: "none",
-                padding: 0,
-                cursor: "pointer",
-                color: "var(--red)",
-                fontFamily: "var(--font-body)",
-                fontSize: 12,
-                fontWeight: 700,
-                flexShrink: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              Remove
-            </button>
-          )}
+              {url
+                ? `${formatLabel} attached — ${fileName ?? url.split("/").pop()}`
+                : "Nothing attached yet — drop a file below."}
+            </span>
+            {url && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUrl(null);
+                  setDuration(null);
+                  setFileName(null);
+                }}
+                style={{
+                  marginLeft: "auto",
+                  border: "none",
+                  background: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: "var(--red)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {extras > 0 && (
-        <p
-          style={{
-            fontSize: 12,
-            color: "var(--text-muted)",
-            margin: "10px 0 0",
-            lineHeight: 1.5,
-          }}
-        >
-          This clip has {extras} more block{extras > 1 ? "s" : ""} from an older
-          import. They still play, and saving here leaves them untouched.
-        </p>
-      )}
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          marginTop: 18,
-        }}
-      >
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: "var(--text-secondary)",
-            whiteSpace: "nowrap",
-            cursor: "pointer",
-          }}
-        >
-          {/* Kept though the design does not show it: is_preview is what lets
-              a lesson be watched without an entitlement, and dropping the
-              control would leave that rule with no way to be set. */}
-          <input
-            type="checkbox"
-            checked={isPreview}
-            onChange={(e) => setIsPreview(e.target.checked)}
-          />
-          Free preview
-        </label>
+        {extras > 0 && (
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--text-muted)",
+              margin: "10px 0 0",
+              lineHeight: 1.5,
+            }}
+          >
+            This clip has {extras} more block{extras > 1 ? "s" : ""} from an older
+            import. They still play, and saving here leaves them untouched.
+          </p>
+        )}
 
         <div
           style={{
-            marginLeft: "auto",
             display: "flex",
-            gap: 10,
             alignItems: "center",
+            gap: 14,
+            marginTop: 18,
           }}
         >
-          <DeleteButton
-            kind="lesson"
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: "var(--text-secondary)",
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
+          >
+            {/* Kept though the design does not show it: is_preview is what lets
+                a lesson be watched without an entitlement, and dropping the
+                control would leave that rule with no way to be set. */}
+            <input
+              type="checkbox"
+              checked={isPreview}
+              onChange={(e) => setIsPreview(e.target.checked)}
+            />
+            Free preview
+          </label>
+
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+            }}
+          >
+            <DeleteButton
+              kind="lesson"
+              courseId={courseId}
+              id={lesson.id}
+              label="Remove clip"
+            />
+            <WBtn type="button" sm icon="check2" onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </WBtn>
+          </div>
+        </div>
+
+        <FormError state={state} />
+
+        <div style={{ marginTop: 18 }}>
+          <MediaDropZone
             courseId={courseId}
-            id={lesson.id}
-            label="Remove clip"
+            lessonId={lesson.id}
+            onUploaded={onUploaded}
+            hint={
+              url
+                ? "Drop another file to replace the one attached — then Save."
+                : "Video, image, GIF or PDF · drag & drop, or click to choose."
+            }
           />
-          <WBtn type="button" sm icon="check2" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-          </WBtn>
         </div>
       </div>
-
-      <FormError state={state} />
-
-      <div style={{ marginTop: 18 }}>
-        <MediaDropZone
-          courseId={courseId}
-          lessonId={lesson.id}
-          onUploaded={onUploaded}
-          hint={
-            url
-              ? "Drop another file to replace the one attached — then Save."
-              : "Video, image, GIF or PDF · drag & drop, or click to choose."
-          }
-        />
-      </div>
-    </>
+    </div>
   );
 }
