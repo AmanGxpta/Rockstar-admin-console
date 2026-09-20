@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { Icon } from "@/components/ui/icon";
 import {
@@ -53,6 +53,71 @@ function bankQuestionReady(q: EditorQuestion): boolean {
   );
 }
 
+/**
+ * The settings card's fields, as strings.
+ *
+ * Strings rather than numbers because that is what a text box holds: an
+ * emptied field is "" and not NaN, so the baseline comparison below can say
+ * plainly whether what is on screen still matches what was saved. The action
+ * does the parsing and the range checks, as it did when this was a <form>.
+ */
+type SettingsDraft = {
+  question_count: string;
+  duration_minutes: string;
+  pass_percent: string;
+  attempts_allowed: string;
+  grants_certificate: boolean;
+};
+
+const SETTINGS_TEXT_KEYS = [
+  "question_count",
+  "duration_minutes",
+  "pass_percent",
+  "attempts_allowed",
+] as const;
+
+function settingsDraft(
+  settings: ExamSettings | null,
+  bankSize: number,
+): SettingsDraft {
+  return {
+    question_count: String(settings?.question_count ?? bankSize ?? 1),
+    duration_minutes: String(settings?.duration_minutes ?? 30),
+    pass_percent: String(settings?.pass_percent ?? 80),
+    attempts_allowed: String(settings?.attempts_allowed ?? 2),
+    grants_certificate: settings?.grants_certificate ?? true,
+  };
+}
+
+function settingsChanged(a: SettingsDraft, b: SettingsDraft): boolean {
+  return (
+    a.grants_certificate !== b.grants_certificate ||
+    SETTINGS_TEXT_KEYS.some((k) => a[k].trim() !== b[k].trim())
+  );
+}
+
+/** Whether a question has been touched since the modal opened. */
+function questionChanged(a: QuestionDraft, b: QuestionDraft): boolean {
+  return (
+    a.type !== b.type ||
+    a.prompt !== b.prompt ||
+    a.explanation !== b.explanation ||
+    a.hint !== b.hint ||
+    a.isRequired !== b.isRequired ||
+    a.mediaUrl !== b.mediaUrl ||
+    a.choices.length !== b.choices.length ||
+    a.choices.some((c, i) => {
+      const other = b.choices[i];
+      return (
+        !other ||
+        c.id !== other.id ||
+        c.body !== other.body ||
+        c.isCorrect !== other.isCorrect
+      );
+    })
+  );
+}
+
 function toDraft(q: EditorQuestion): QuestionDraft {
   return {
     id: q.id,
@@ -86,10 +151,59 @@ export function ExamBuilder({
   const [toast, setToast] = useState<string | null>(null);
   const [, start] = useTransition();
 
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
-    saveExamSettings,
-    null,
+  /**
+   * `saved` is what is believed to be in the row; `draft` is what is on
+   * screen. Save exists only while the two disagree.
+   *
+   * There is deliberately no <form> any more, and that is not tidiness. React
+   * queues `requestFormReset` when a `<form action>` settles, and the DOM's
+   * own reset returns "Auto-issue certificate" to the value it mounted with —
+   * `draft` never changed, nothing re-renders, and the toggle is left
+   * contradicting the state that was just written. The same trap the
+   * notification switches fell into. The values go to the action as FormData
+   * built here instead, so there is nothing left for a reset to undo.
+   *
+   * The baseline advances on a successful write rather than waiting for the
+   * revalidated prop, so Save disappears exactly when the save lands and
+   * stays put when it fails.
+   */
+  const [saved, setSaved] = useState<SettingsDraft>(() =>
+    settingsDraft(settings, bank.length),
   );
+  const [draft, setDraft] = useState<SettingsDraft>(saved);
+  const [state, setState] = useState<ActionResult | null>(null);
+  const [pending, setPending] = useState(false);
+
+  const dirty = settingsChanged(draft, saved);
+
+  const setField = (key: (typeof SETTINGS_TEXT_KEYS)[number]) => (value: string) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+    // The last verdict described the numbers as they were; editing retires it.
+    setState((r) => (r === null ? r : null));
+  };
+
+  const saveSettings = () => {
+    // Snapshot what is being sent: a field edited while the write is in flight
+    // belongs to the next save, and advancing the baseline to the live draft
+    // would hide that edit behind a Save button that never came back.
+    const attempted = draft;
+    setPending(true);
+    start(async () => {
+      setState(null);
+      const form = new FormData();
+      form.set("courseId", courseId);
+      for (const key of SETTINGS_TEXT_KEYS) form.set(key, attempted[key]);
+      if (attempted.grants_certificate) form.set("grants_certificate", "on");
+
+      const outcome = await saveExamSettings(null, form);
+      setPending(false);
+      setState(outcome);
+      if ("ok" in outcome) {
+        setSaved(attempted);
+        say("Exam settings saved");
+      }
+    });
+  };
 
   const say = (message: string) => {
     setToast(message);
@@ -184,14 +298,17 @@ export function ExamBuilder({
           )}
         </Card>
 
-        <form action={action}>
-          <input type="hidden" name="courseId" value={courseId} />
+        <div>
           <Card>
             <SectionH
               action={
-                <WBtn type="submit" icon="check2" sm disabled={pending}>
-                  {pending ? "Saving…" : "Save"}
-                </WBtn>
+                // Absent, not disabled: there is nothing to save until a
+                // number changes, and a greyed-out button says the opposite.
+                dirty ? (
+                  <WBtn icon="check2" sm disabled={pending} onClick={saveSettings}>
+                    {pending ? "Saving…" : "Save"}
+                  </WBtn>
+                ) : null
               }
             >
               Exam settings
@@ -202,33 +319,33 @@ export function ExamBuilder({
                 Questions drawn
               </Label>
               <TextInput
-                name="question_count"
                 type="number"
-                defaultValue={String(settings?.question_count ?? bank.length ?? 1)}
+                value={draft.question_count}
+                onChange={setField("question_count")}
               />
             </div>
             <div style={{ marginBottom: 14 }}>
               <Label hint="minutes">Time limit</Label>
               <TextInput
-                name="duration_minutes"
                 type="number"
-                defaultValue={String(settings?.duration_minutes ?? 30)}
+                value={draft.duration_minutes}
+                onChange={setField("duration_minutes")}
               />
             </div>
             <div style={{ marginBottom: 14 }}>
               <Label hint="percent">Pass mark</Label>
               <TextInput
-                name="pass_percent"
                 type="number"
-                defaultValue={String(settings?.pass_percent ?? 80)}
+                value={draft.pass_percent}
+                onChange={setField("pass_percent")}
               />
             </div>
             <div style={{ marginBottom: 4 }}>
               <Label>Attempts allowed</Label>
               <TextInput
-                name="attempts_allowed"
                 type="number"
-                defaultValue={String(settings?.attempts_allowed ?? 2)}
+                value={draft.attempts_allowed}
+                onChange={setField("attempts_allowed")}
               />
             </div>
 
@@ -236,10 +353,13 @@ export function ExamBuilder({
               label="Auto-issue certificate"
               sub="A passing attempt awards the certificate straight away"
             >
-              {/* The toggle is the design's control; the checkbox behind it is
-                  what the form actually posts. */}
-              <CertificateToggle
-                defaultOn={settings?.grants_certificate ?? true}
+              <Toggle
+                on={draft.grants_certificate}
+                label="Auto-issue certificate"
+                onChange={(on) => {
+                  setDraft((d) => ({ ...d, grants_certificate: on }));
+                  setState((r) => (r === null ? r : null));
+                }}
               />
             </RowSetting>
 
@@ -273,7 +393,7 @@ export function ExamBuilder({
               </div>
             </div>
           </Card>
-        </form>
+        </div>
       </div>
 
       {editing && (
@@ -294,16 +414,6 @@ export function ExamBuilder({
   );
 }
 
-function CertificateToggle({ defaultOn }: { defaultOn: boolean }) {
-  const [on, setOn] = useState(defaultOn);
-  return (
-    <>
-      {on && <input type="hidden" name="grants_certificate" value="on" />}
-      <Toggle on={on} onChange={setOn} label="Auto-issue certificate" />
-    </>
-  );
-}
-
 function QuestionModal({
   courseId,
   draft: initial,
@@ -320,6 +430,12 @@ function QuestionModal({
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  // A question opened and not touched has nothing to write, and one being
+  // added is untouched until something is typed into it — so the same
+  // comparison covers both, and Cancel is always the way out of an
+  // untouched modal.
+  const touched = questionChanged(draft, initial);
 
   const save = () =>
     start(async () => {
@@ -445,9 +561,11 @@ function QuestionModal({
             <WBtn kind="ghost" sm onClick={onClose}>
               Cancel
             </WBtn>
-            <WBtn sm icon="check2" onClick={save} disabled={pending}>
-              {pending ? "Saving…" : "Save question"}
-            </WBtn>
+            {touched && (
+              <WBtn sm icon="check2" onClick={save} disabled={pending}>
+                {pending ? "Saving…" : "Save question"}
+              </WBtn>
+            )}
           </div>
         </div>
       </div>
