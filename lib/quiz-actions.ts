@@ -20,6 +20,9 @@ function validate(draft: QuizDraft): string | null {
     if (q.choices.length < 2) {
       return "Every question needs at least two options.";
     }
+    if (q.type === "image" && !q.mediaUrl) {
+      return "An Image ID question needs a reference image.";
+    }
     if (q.type === "mc" || q.type === "image") {
       const correct = q.choices.filter((c) => c.isCorrect).length;
       if (correct > 1) {

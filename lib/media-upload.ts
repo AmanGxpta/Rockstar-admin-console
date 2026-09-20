@@ -347,3 +347,112 @@ export function useCoverRemove() {
     await supabase.storage.from("course-covers").remove([path]);
   };
 }
+
+// -------------------------------------------------------- question media --
+
+/**
+ * The picture an Image ID question asks about.
+ *
+ * Same bucket and same `courses/<course_id>/…` path shape as a clip, because
+ * the read policy in 0009 is what has to let a student see it: an entitled
+ * student resolves through has_course_access(), and nothing else does. Filed
+ * under `questions/<question_id>/` so the object is traceable to the row that
+ * points at it — quiz_questions.media_url holds the path, not a URL.
+ *
+ * Images only, and a tighter ceiling than a clip's: this is something a
+ * student looks at beside four answer options, not something they stream.
+ */
+export const QUESTION_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+/** The bucket's image types (0012). GIF stays in — a technique can animate. */
+const QUESTION_IMAGE_MIMES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+] as const;
+
+export const QUESTION_IMAGE_ACCEPT = QUESTION_IMAGE_MIMES.join(",");
+
+export const QUESTION_IMAGE_HINT =
+  "JPG, PNG, WebP, GIF or AVIF · up to 8 MB";
+
+const QUESTION_IMAGE_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+};
+
+/** The same check the bucket makes, made early enough to say why. */
+export function questionImageProblem(file: File): string | null {
+  if (!(file.type in QUESTION_IMAGE_EXT)) {
+    return `${file.type || "That file type"} isn't accepted. Use JPG, PNG, WebP, GIF or AVIF.`;
+  }
+  if (file.size > QUESTION_IMAGE_MAX_BYTES) {
+    return `That image is ${formatBytes(file.size)}. The limit is ${formatBytes(QUESTION_IMAGE_MAX_BYTES)}.`;
+  }
+  return null;
+}
+
+function questionImagePath(
+  courseId: string,
+  questionId: string,
+  file: File,
+): string {
+  const ext = QUESTION_IMAGE_EXT[file.type] ?? "jpg";
+  return `courses/${courseId}/questions/${questionId}/${crypto.randomUUID().slice(0, 12)}.${ext}`;
+}
+
+export type QuestionImageResult =
+  | { ok: true; path: string }
+  | { ok: false; error: string };
+
+export function useQuestionImageUpload() {
+  const supabase = useSupabaseBrowserClient();
+
+  return async function uploadQuestionImage(
+    courseId: string,
+    questionId: string,
+    file: File,
+  ): Promise<QuestionImageResult> {
+    const problem = questionImageProblem(file);
+    if (problem) return { ok: false, error: problem };
+
+    const path = questionImagePath(courseId, questionId, file);
+    const { error } = await supabase.storage
+      .from("course-media")
+      .upload(path, file, { contentType: file.type, upsert: false });
+
+    if (error) {
+      const denied = /row-level security|not authorized|403/i.test(error.message);
+      return {
+        ok: false,
+        error: denied
+          ? "You don't have permission to upload to this course."
+          : `Upload failed: ${error.message}`,
+      };
+    }
+
+    return { ok: true, path };
+  };
+}
+
+/**
+ * Drops an object the question no longer points at.
+ *
+ * Best effort, and deliberately not awaited for its result anywhere: the row
+ * is the source of truth about what a question shows, and an orphaned image
+ * costs a few hundred kilobytes. Refusing to clear the field because the
+ * delete failed would cost the author their edit.
+ */
+export function useQuestionImageRemove() {
+  const supabase = useSupabaseBrowserClient();
+
+  return async function removeQuestionImage(path: string): Promise<void> {
+    if (/^(https?:)?\/\//i.test(path)) return;
+    await supabase.storage.from("course-media").remove([path]);
+  };
+}

@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { Icon } from "@/components/ui/icon";
-import { Ph, Label, Tag, WBtn } from "@/components/ui/primitives";
+import { Label, Tag, WBtn } from "@/components/ui/primitives";
+import { QuestionImagePicker } from "@/components/ui/question-image-picker";
 import { RowSetting, Seg, TArea, Toggle } from "@/components/ui/controls";
 import { saveQuiz } from "@/lib/quiz-actions";
 import {
@@ -28,13 +29,19 @@ const FIELD_SHADOW = "inset 0 0 0 1.5px var(--border-mid)";
  * `allowed` narrows the type picker: the exam bank is graded by submit_exam(),
  * which matches one chosen choice per question, so multi-select and reorder
  * are not offered there.
+ *
+ * `courseId` is here for one field only — an Image ID question's picture goes
+ * into `course-media` under `courses/<course_id>/…`, which is the path shape
+ * every storage policy in 0009 reads the owner out of.
  */
 export function QuestionEditor({
   q,
+  courseId,
   onPatch,
   allowed,
 }: {
   q: QuestionDraft;
+  courseId: string;
   onPatch: (patch: Partial<QuestionDraft>) => void;
   allowed?: QuestionType[];
 }) {
@@ -131,11 +138,15 @@ export function QuestionEditor({
           <Label hint="students identify the area or tool shown">
             Reference image
           </Label>
-          <Ph
-            icon="image"
-            h={124}
-            label="DROP AN IMAGE OR CHOOSE FROM LIBRARY"
-            style={{ borderRadius: 12 }}
+          <QuestionImagePicker
+            // Keyed, because the stepper swaps `q` under one editor instance:
+            // without this the blob preview of the question just uploaded to
+            // would still be on screen against the next question.
+            key={q.id}
+            courseId={courseId}
+            questionId={q.id}
+            path={q.mediaUrl}
+            onChange={(mediaUrl) => onPatch({ mediaUrl })}
           />
         </div>
       )}
@@ -657,7 +668,7 @@ export function QuizModal({
           style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}
         >
           {tab === "questions" ? (
-            <QuestionEditor q={q} onPatch={patchQ} />
+            <QuestionEditor q={q} courseId={draft.courseId} onPatch={patchQ} />
           ) : (
             <div style={{ maxWidth: 520 }}>
               <div style={{ marginBottom: 18 }}>

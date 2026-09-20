@@ -100,6 +100,9 @@ export function chapterItems(chapter: EditorModule): ChapterItem[] {
 /** A quiz is finishable by a student only if every question has an answer key. */
 export function questionReady(q: EditorQuestion): boolean {
   if (!q.prompt.trim()) return false;
+  // Mirrors draftQuestionReady(): an Image ID question with no picture asks
+  // nothing, so the chapter must not read as Ready on the strength of it.
+  if (q.type === "image" && !q.media_url) return false;
   if (q.type === "order") {
     return q.quiz_choices.filter((c) => c.body.trim()).length >= 2;
   }

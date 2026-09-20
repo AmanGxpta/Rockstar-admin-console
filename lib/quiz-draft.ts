@@ -136,6 +136,9 @@ export function toDraft(
 
 export function draftQuestionReady(q: QuestionDraft): boolean {
   if (!q.prompt.trim()) return false;
+  // The picture is the question. Without it an Image ID question reaches the
+  // student as four labels and nothing to label, so it is not ready to save.
+  if (q.type === "image" && !q.mediaUrl) return false;
   if (q.type === "order") {
     return q.choices.filter((c) => c.body.trim()).length >= 2;
   }

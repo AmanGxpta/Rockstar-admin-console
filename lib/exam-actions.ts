@@ -87,6 +87,9 @@ export async function saveExamQuestion(
   if (draft.choices.length < 2) {
     return { error: "Give the question at least two options." };
   }
+  if (draft.type === "image" && !draft.mediaUrl) {
+    return { error: "An Image ID question needs a reference image." };
+  }
   if (draft.choices.filter((c) => c.isCorrect).length !== 1) {
     return { error: "Exam questions need exactly one correct answer." };
   }

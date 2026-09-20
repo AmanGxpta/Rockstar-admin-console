@@ -46,6 +46,9 @@ const COLS: Col[] = [
 function bankQuestionReady(q: EditorQuestion): boolean {
   return (
     !!q.prompt.trim() &&
+    // An Image ID question with no picture is a multiple-choice question with
+    // a missing sentence, so it does not count towards what the exam can draw.
+    (q.type !== "image" || !!q.media_url) &&
     q.quiz_choices.some((c) => c.is_correct && c.body.trim())
   );
 }
@@ -419,6 +422,7 @@ function QuestionModal({
         >
           <QuestionEditor
             q={draft}
+            courseId={courseId}
             allowed={[...BANK_TYPES]}
             onPatch={(patch) => setDraft((d) => ({ ...d, ...patch }))}
           />
