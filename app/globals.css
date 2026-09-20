@@ -237,6 +237,21 @@ body {
   background: var(--dark-3);
 }
 
+/*
+ * The grip on a clip or quiz card in the course editor.
+ *
+ * Its resting opacity is inline, because hover is React state there. This is
+ * the keyboard half: tabbing to a grip has to make it visible, or the arrow
+ * keys that move the card are a control nobody can see they have reached.
+ * !important because the inline style would otherwise win.
+ */
+.rs-grip:focus-visible {
+  opacity: 1 !important;
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .rs-iconbtn {
   transition: border-color 0.18s, color 0.18s;
 }

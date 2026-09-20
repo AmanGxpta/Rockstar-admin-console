@@ -27,6 +27,7 @@ import {
   LuFilter,
   LuFlame,
   LuGlobe,
+  LuGripVertical,
   LuHeart,
   LuHouse,
   LuImage,
@@ -117,6 +118,7 @@ const OUTLINE = {
   trash: LuTrash2,
   check2: LuCheckCheck,
   mic: LuMic,
+  grip: LuGripVertical,
 } as const;
 
 /** `-f` names render a solid glyph; stroke width means nothing to them. */

@@ -81,6 +81,11 @@ export type ChapterItem =
   | { kind: "lesson"; position: number; lesson: EditorLesson }
   | { kind: "quiz"; position: number; quiz: EditorQuiz };
 
+/** The row id under a chapter item, whichever of the two it is. */
+export function chapterItemId(item: ChapterItem): string {
+  return item.kind === "lesson" ? item.lesson.id : item.quiz.id;
+}
+
 export function chapterItems(chapter: EditorModule): ChapterItem[] {
   const items: ChapterItem[] = [
     ...chapter.lessons.map(
@@ -95,6 +100,84 @@ export function chapterItems(chapter: EditorModule): ChapterItem[] {
       a.position - b.position ||
       (a.kind === "lesson" ? -1 : 1) - (b.kind === "lesson" ? -1 : 1),
   );
+}
+
+// ------------------------------------------------------------------ moving --
+
+export type ChapterMove = {
+  kind: "lesson" | "quiz";
+  itemId: string;
+  toModuleId: string;
+  /**
+   * Zero-based slot in the destination chapter's merged list *with the moved
+   * item taken out* — which is what a gap between two cards knows, and the
+   * same number move_chapter_item() takes.
+   */
+  toIndex: number;
+};
+
+/**
+ * The same move the database makes, made here so the card lands where it was
+ * dropped instead of after a round trip.
+ *
+ * Applied through useOptimistic, so this never has to be undone by hand: React
+ * throws the result away when the transition that produced it settles and the
+ * revalidated tree arrives. It exists to agree with move_chapter_item() for
+ * the second that both are true — the positions it writes are the 1..n that
+ * function writes, for the same reason (a hole left behind is a slot the next
+ * append lands on top of).
+ */
+export function applyChapterMove(
+  modules: EditorModule[],
+  move: ChapterMove,
+): EditorModule[] {
+  const source = modules.find((m) =>
+    move.kind === "lesson"
+      ? m.lessons.some((l) => l.id === move.itemId)
+      : m.quizzes.some((q) => q.id === move.itemId),
+  );
+  const destination = modules.find((m) => m.id === move.toModuleId);
+  if (!source || !destination) return modules;
+
+  // By kind and id, never by identity: chapterItems() builds fresh wrappers on
+  // every call, so the item taken from the source chapter is a different
+  // object from the one in the destination's list even when they are the same
+  // row — which is exactly the case for a move inside one chapter.
+  const isMoved = (i: ChapterItem) =>
+    i.kind === move.kind && chapterItemId(i) === move.itemId;
+
+  const moved = chapterItems(source).find(isMoved);
+  if (!moved) return modules;
+
+  // The destination as it stands, minus the card in hand.
+  const rest = chapterItems(destination).filter((i) => !isMoved(i));
+  const slot = Math.max(0, Math.min(move.toIndex, rest.length));
+  const placed = [...rest.slice(0, slot), moved, ...rest.slice(slot)];
+
+  // The chapter it left, compacted. Same list when the move is within one
+  // chapter, in which case `placed` is the only ordering that matters.
+  const emptied =
+    source.id === destination.id
+      ? placed
+      : chapterItems(source).filter((i) => !isMoved(i));
+
+  const rebuild = (chapter: EditorModule, items: ChapterItem[]): EditorModule => ({
+    ...chapter,
+    lessons: items.flatMap((item, i) =>
+      item.kind === "lesson"
+        ? [{ ...item.lesson, position: i + 1 }]
+        : [],
+    ),
+    quizzes: items.flatMap((item, i) =>
+      item.kind === "quiz" ? [{ ...item.quiz, position: i + 1 }] : [],
+    ),
+  });
+
+  return modules.map((m) => {
+    if (m.id === destination.id) return rebuild(m, placed);
+    if (m.id === source.id) return rebuild(m, emptied);
+    return m;
+  });
 }
 
 /** A quiz is finishable by a student only if every question has an answer key. */

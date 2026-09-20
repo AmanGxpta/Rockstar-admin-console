@@ -367,6 +367,46 @@ export async function saveClip(input: {
   return { ok: true };
 }
 
+/**
+ * Drops a clip or a quiz into a slot, in its own chapter or another one.
+ *
+ * One RPC rather than a few updates from here, and that is not a preference.
+ * `lessons` carries `unique (module_id, position)`; renumbering a chapter
+ * walks through states where two rows share a position, and every PostgREST
+ * call is its own transaction — so doing this from the app means a unique
+ * violation halfway through a move that has already half happened. The
+ * constraint is deferrable, which makes those states legal inside one
+ * transaction, and the function body is one transaction. It also has two
+ * chapters and, for a quiz, `quiz_questions.module_id` to keep in step. See
+ * migration 0025.
+ *
+ * Authorisation is the function's own: it runs as the caller and asks
+ * can_author_course() before it writes anything.
+ */
+export async function moveChapterItem(input: {
+  courseId: string;
+  kind: "lesson" | "quiz";
+  itemId: string;
+  toModuleId: string;
+  toIndex: number;
+}): Promise<ActionResult> {
+  await requireSession("educator");
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.rpc("move_chapter_item", {
+    p_course_id: input.courseId,
+    p_kind: input.kind,
+    p_item_id: input.itemId,
+    p_to_module_id: input.toModuleId,
+    p_to_index: input.toIndex,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/educator/courses/${input.courseId}`);
+  return { ok: true };
+}
+
 export async function deleteLesson(form: FormData): Promise<void> {
   await requireSession("educator");
   const courseId = str(form, "courseId");

@@ -1,15 +1,30 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { CoverEditor } from "@/components/ui/cover-picker";
 import { Icon } from "@/components/ui/icon";
 import { Card, SectionH, Tag, WBtn } from "@/components/ui/primitives";
 import { Toast } from "@/components/ui/controls";
-import { addLesson, addModule, renameModule } from "@/lib/course-actions";
+import {
+  addLesson,
+  addModule,
+  moveChapterItem,
+  renameModule,
+} from "@/lib/course-actions";
 import { coverPublicUrl } from "@/lib/course-cover";
 import { deleteQuiz, duplicateQuiz } from "@/lib/quiz-actions";
 import {
+  applyChapterMove,
+  chapterItemId,
   chapterItems,
   quizReady,
   type CourseForEditor,
@@ -36,6 +51,18 @@ type Selection =
 
 type ModalState = { draft: QuizDraft; chapterTitle: string; isNew: boolean } | null;
 
+/** The card in hand, and where it came from. */
+type Drag = {
+  kind: "lesson" | "quiz";
+  id: string;
+  moduleId: string;
+  /** Its slot in the chapter it was picked up from. */
+  index: number;
+};
+
+/** A gap between two cards, which is what a drop actually targets. */
+type Gap = { moduleId: string; index: number };
+
 function chapterLabel(m: EditorModule) {
   return `${String(m.position).padStart(2, "0")} · ${m.title}`;
 }
@@ -60,13 +87,21 @@ function findSelected(modules: EditorModule[], selected: Selection): Current {
 }
 
 export function CourseEditor({ course }: { course: CourseForEditor }) {
-  const modules = course.course_modules;
+  const saved = course.course_modules;
+
+  // The tree as the author sees it, which is the saved one with the move they
+  // are in the middle of already applied. React drops the optimistic layer
+  // when the transition that produced it settles, by which time
+  // revalidatePath has brought the real tree back — so nothing here has to be
+  // rolled back, and a move that failed simply snaps back with the toast that
+  // says why.
+  const [modules, optimisticallyMove] = useOptimistic(saved, applyChapterMove);
 
   const [open, setOpen] = useState<Set<string>>(
-    () => new Set(modules.length ? [modules[0].id] : []),
+    () => new Set(saved.length ? [saved[0].id] : []),
   );
   const [selected, setSelected] = useState<Selection>(() => {
-    for (const m of modules) {
+    for (const m of saved) {
       if (m.lessons.length) return { kind: "lesson", id: m.lessons[0].id };
     }
     return null;
@@ -83,6 +118,11 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
     null,
   );
   const [modal, setModal] = useState<ModalState>(null);
+  // The card in hand and the gap under the pointer. Both live only for the
+  // length of a drag; `dragging` also dims the card so its old slot reads as
+  // vacated.
+  const [dragging, setDragging] = useState<Drag | null>(null);
+  const [overGap, setOverGap] = useState<Gap | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [, start] = useTransition();
   // Scoped to the rename rather than read off the shared transition, which is
@@ -114,7 +154,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
   // is what keeps the row from ever painting the old title in between.
   if (
     pendingName &&
-    modules.find((m) => m.id === pendingName.id)?.title === pendingName.title
+    saved.find((m) => m.id === pendingName.id)?.title === pendingName.title
   ) {
     setPendingName(null);
   }
@@ -195,6 +235,61 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
         say(result.error);
       }
     });
+  };
+
+  // -------------------------------------------------------------- moving --
+
+  /**
+   * Performs a drop.
+   *
+   * `gap` counts the gaps in the chapter as it is drawn — 0 above the first
+   * card, n below the last. move_chapter_item() instead wants the slot in the
+   * destination list *with the dragged card taken out*, so a move down inside
+   * one chapter loses a place on the way: the gap below card 3 is index 3 once
+   * card 1 is no longer in front of it. Across chapters the card was never in
+   * that list, so the gap is already the answer.
+   */
+  const drop = (from: Drag, gap: Gap) => {
+    const sameChapter = from.moduleId === gap.moduleId;
+    // Both gaps either side of a card put it back where it was.
+    if (sameChapter && (gap.index === from.index || gap.index === from.index + 1)) {
+      return;
+    }
+
+    const toIndex =
+      sameChapter && gap.index > from.index ? gap.index - 1 : gap.index;
+
+    const move = {
+      kind: from.kind,
+      itemId: from.id,
+      toModuleId: gap.moduleId,
+      toIndex,
+    };
+
+    setOpen((o) => new Set(o).add(gap.moduleId));
+    start(async () => {
+      optimisticallyMove(move);
+      const result = await moveChapterItem({ courseId: course.id, ...move });
+      if ("error" in result) say(result.error);
+    });
+  };
+
+  /**
+   * The same move from the keyboard, one slot at a time.
+   *
+   * A drag handle that only answers to a mouse would put reordering out of
+   * reach of anyone not using one, so the handle is a button and the arrow
+   * keys are the other half of it. Within a chapter only — stepping a card
+   * across a chapter boundary needs somewhere to say which chapter, and the
+   * drag already says it.
+   */
+  const nudge = (from: Drag, delta: -1 | 1) => {
+    const chapter = modules.find((m) => m.id === from.moduleId);
+    if (!chapter) return;
+    const target = from.index + delta;
+    if (target < 0 || target >= chapterItems(chapter).length) return;
+    // Expressed as a gap so it goes through the same arithmetic as a drop.
+    drop(from, { moduleId: from.moduleId, index: delta === 1 ? target + 1 : target });
   };
 
   const onDuplicate = (quiz: EditorQuiz) =>
@@ -361,6 +456,30 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
               const items = chapterItems(m);
               return (
                 <div key={m.id} style={{ marginBottom: 6 }}>
+                  {/*
+                    A collapsed chapter is a closed drawer, so its header is
+                    the drop target: dragging onto it opens the chapter, and
+                    the gaps inside then say exactly where the card lands.
+                    An open chapter needs none of this — its gaps are already
+                    on screen, and a header that also accepted drops would be
+                    a second answer to a question the list has already
+                    answered.
+                  */}
+                  <div
+                    onDragOver={(e) => {
+                      if (isOpen || !dragging) return;
+                      e.preventDefault();
+                      setOverGap(null);
+                      setOpen((o) => new Set(o).add(m.id));
+                    }}
+                    onDrop={(e) => {
+                      if (isOpen || !dragging) return;
+                      e.preventDefault();
+                      drop(dragging, { moduleId: m.id, index: items.length });
+                      setDragging(null);
+                      setOverGap(null);
+                    }}
+                  >
                   <ChapterRow
                     chapter={m}
                     title={pendingName?.id === m.id ? pendingName.title : m.title}
@@ -373,68 +492,119 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                     onCommit={(title) => commitRename(m, title)}
                     onCancel={() => setRenaming(null)}
                   />
+                  </div>
 
                   {isOpen && (
                     <div style={{ paddingLeft: 22 }}>
-                      {items.map((item) =>
-                        item.kind === "quiz" ? (
-                          <QuizRow
-                            key={item.quiz.id}
-                            quiz={item.quiz}
-                            active={
-                              selected?.kind === "quiz" &&
-                              selected.id === item.quiz.id
-                            }
-                            onOpen={() => openQuiz(item.quiz, m)}
-                            onDuplicate={() => onDuplicate(item.quiz)}
-                            onDelete={() => onDeleteQuiz(item.quiz)}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            key={item.lesson.id}
-                            onClick={() =>
-                              setSelected({ kind: "lesson", id: item.lesson.id })
-                            }
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              width: "100%",
-                              padding: "8px 10px",
-                              borderRadius: 9,
-                              border: "none",
-                              cursor: "pointer",
-                              textAlign: "left",
-                              fontFamily: "var(--font-body)",
-                              fontSize: 12.5,
-                              color: "var(--text-secondary)",
-                              background:
-                                selected?.kind === "lesson" &&
-                                selected.id === item.lesson.id
-                                  ? "var(--red-faint)"
-                                  : "transparent",
-                              fontWeight:
-                                selected?.kind === "lesson" &&
-                                selected.id === item.lesson.id
-                                  ? 700
-                                  : 500,
-                            }}
-                          >
-                            <Icon
-                              name="video"
-                              size={14}
-                              c={
-                                selected?.kind === "lesson" &&
-                                selected.id === item.lesson.id
-                                  ? "var(--red)"
-                                  : "var(--text-muted)"
+                      <DropGap
+                        gap={{ moduleId: m.id, index: 0 }}
+                        drag={dragging}
+                        over={overGap}
+                        onOver={setOverGap}
+                        onDrop={drop}
+                      />
+
+                      {items.map((item, i) => {
+                        const id = chapterItemId(item);
+                        const card: Drag = {
+                          kind: item.kind,
+                          id,
+                          moduleId: m.id,
+                          index: i,
+                        };
+                        const held = dragging?.kind === item.kind && dragging.id === id;
+
+                        return (
+                          <Fragment key={id}>
+                            <Draggable
+                              card={card}
+                              held={held}
+                              label={
+                                item.kind === "quiz"
+                                  ? item.quiz.title || "Untitled quiz"
+                                  : item.lesson.title
                               }
+                              onPick={setDragging}
+                              onRelease={() => {
+                                setDragging(null);
+                                setOverGap(null);
+                              }}
+                              onHover={setOverGap}
+                              onDropAt={(gap) => {
+                                if (dragging) drop(dragging, gap);
+                              }}
+                              onNudge={(delta) => nudge(card, delta)}
+                            >
+                              {item.kind === "quiz" ? (
+                                <QuizRow
+                                  quiz={item.quiz}
+                                  active={
+                                    selected?.kind === "quiz" &&
+                                    selected.id === item.quiz.id
+                                  }
+                                  onOpen={() => openQuiz(item.quiz, m)}
+                                  onDuplicate={() => onDuplicate(item.quiz)}
+                                  onDelete={() => onDeleteQuiz(item.quiz)}
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelected({
+                                      kind: "lesson",
+                                      id: item.lesson.id,
+                                    })
+                                  }
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    width: "100%",
+                                    padding: "8px 10px",
+                                    borderRadius: 9,
+                                    border: "none",
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                    fontFamily: "var(--font-body)",
+                                    fontSize: 12.5,
+                                    color: "var(--text-secondary)",
+                                    background:
+                                      selected?.kind === "lesson" &&
+                                      selected.id === item.lesson.id
+                                        ? "var(--red-faint)"
+                                        : "transparent",
+                                    fontWeight:
+                                      selected?.kind === "lesson" &&
+                                      selected.id === item.lesson.id
+                                        ? 700
+                                        : 500,
+                                  }}
+                                >
+                                  <Icon
+                                    name="video"
+                                    size={14}
+                                    c={
+                                      selected?.kind === "lesson" &&
+                                      selected.id === item.lesson.id
+                                        ? "var(--red)"
+                                        : "var(--text-muted)"
+                                    }
+                                  />
+                                  <span style={ellipsis}>{item.lesson.title}</span>
+                                </button>
+                              )}
+                            </Draggable>
+
+                            <DropGap
+                              gap={{ moduleId: m.id, index: i + 1 }}
+                              drag={dragging}
+                              over={overGap}
+                              onOver={setOverGap}
+                              onDrop={drop}
                             />
-                            <span style={ellipsis}>{item.lesson.title}</span>
-                          </button>
-                        ),
-                      )}
+                          </Fragment>
+                        );
+                      })}
 
                       {/* Named for the chapter rather than left to the Add menu
                           at the top: a chapter is created empty, and the next
@@ -566,6 +736,194 @@ const ellipsis = {
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 } as const;
+
+// ------------------------------------------------------------- moving a card --
+
+/**
+ * One card, with a handle on it.
+ *
+ * The whole row is not draggable, and that is the point: a clip row and a quiz
+ * row are both already clickable, and making the body draggable turns every
+ * slightly-imprecise click into a drag that selects nothing. The grip is the
+ * only thing that starts one, which is also what makes a drag deliberate
+ * enough not to need an undo.
+ *
+ * The grip is a button rather than a div so it can be tabbed to, and Arrow
+ * Up/Down on it move the card a slot — native drag and drop answers only to a
+ * pointer, and a reordering control that cannot be reached without one is not
+ * finished.
+ *
+ * The card is also a drop target, not only the seams between cards: a list of
+ * ten-pixel gaps separated by forty-pixel rows is mostly dead surface, and a
+ * drop that lands on nothing reads as the drag having failed. Which half of
+ * the row the pointer is in decides which seam it means, so the whole list
+ * accepts a drop and the line still marks exactly where the card will land.
+ */
+function Draggable({
+  card,
+  held,
+  label,
+  onPick,
+  onRelease,
+  onHover,
+  onDropAt,
+  onNudge,
+  children,
+}: {
+  card: Drag;
+  held: boolean;
+  label: string;
+  onPick: (card: Drag) => void;
+  onRelease: () => void;
+  onHover: (gap: Gap) => void;
+  onDropAt: (gap: Gap) => void;
+  onNudge: (delta: -1 | 1) => void;
+  children: ReactNode;
+}) {
+  const [hover, setHover] = useState(false);
+  // Armed by the grip, so the row is only draggable for the gesture that
+  // started on it. `held` is the parent's answer to "is this the card in
+  // hand", and is set when a drag actually begins rather than on mousedown —
+  // arming is not dragging, and a row that dimmed on every press would lie.
+  const [armed, setArmed] = useState(false);
+
+  /** Which seam the pointer is nearest: above this card, or below it. */
+  const seam = (e: { clientY: number; currentTarget: HTMLElement }): Gap => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const below = e.clientY > box.top + box.height / 2;
+    return { moduleId: card.moduleId, index: below ? card.index + 1 : card.index };
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      // Set on the wrapper, not the grip: the drag image is the row, so what
+      // follows the pointer is the card and not an eight-pixel handle.
+      draggable={armed}
+      onDragStart={(e) => {
+        // Firefox starts no drag at all without a payload, and the value is
+        // never read back — the card in hand is React state.
+        e.dataTransfer.setData("text/plain", card.id);
+        e.dataTransfer.effectAllowed = "move";
+        onPick(card);
+      }}
+      onDragEnd={() => {
+        setArmed(false);
+        onRelease();
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        onHover(seam(e));
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDropAt(seam(e));
+      }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        opacity: held ? 0.4 : 1,
+        transition: "opacity .12s ease",
+      }}
+    >
+      <button
+        type="button"
+        aria-label={`Move ${label}`}
+        title="Drag to move, or use the arrow keys"
+        // mousedown rather than click: the drag has to be armed before the
+        // browser decides a gesture has begun, and a click never arrives
+        // during one.
+        onMouseDown={() => setArmed(true)}
+        onMouseUp={() => setArmed(false)}
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+          e.preventDefault();
+          onNudge(e.key === "ArrowDown" ? 1 : -1);
+        }}
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          padding: "2px 1px",
+          border: "none",
+          background: "none",
+          cursor: "grab",
+          lineHeight: 0,
+          // Quiet until the row is under the pointer, for the reason the
+          // chapter pencil is: a list of cards should read as titles. Never
+          // quiet while it holds focus, or the keyboard path would be
+          // invisible to the person using it.
+          opacity: hover || held ? 1 : 0,
+          transition: "opacity .15s ease",
+        }}
+        className="rs-grip"
+      >
+        <Icon name="grip" size={13} c="var(--text-muted)" />
+      </button>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * The seam between two cards: the line that says where the card will land, and
+ * a drop target in its own right for the two places a card has no neighbour —
+ * above the first and below the last.
+ *
+ * It keeps a hairline's worth of height when nothing is being dragged so the
+ * list does not reflow the moment a drag starts.
+ */
+function DropGap({
+  gap,
+  drag,
+  over,
+  onOver,
+  onDrop,
+}: {
+  gap: Gap;
+  drag: Drag | null;
+  over: Gap | null;
+  onOver: (gap: Gap) => void;
+  onDrop: (card: Drag, gap: Gap) => void;
+}) {
+  const active =
+    !!drag && over?.moduleId === gap.moduleId && over.index === gap.index;
+
+  return (
+    <div
+      onDragOver={(e) => {
+        if (!drag) return;
+        // Without this the browser refuses the drop outright.
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        onOver(gap);
+      }}
+      onDrop={(e) => {
+        if (!drag) return;
+        e.preventDefault();
+        onDrop(drag, gap);
+      }}
+      style={{
+        height: drag ? 10 : 2,
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          height: active ? 3 : 0,
+          borderRadius: 999,
+          background: "var(--red)",
+          transition: "height .1s ease",
+        }}
+      />
+    </div>
+  );
+}
 
 // ---------------------------------------------------------- structure row --
 

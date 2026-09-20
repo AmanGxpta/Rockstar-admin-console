@@ -1100,6 +1100,10 @@ export type Database = {
     }
     Functions: {
       can_author_course: { Args: { p_course_id: string }; Returns: boolean }
+      chapter_item_ord: {
+        Args: { p_is_lesson: boolean; p_position: number }
+        Returns: number
+      }
       course_id_from_object_path: { Args: { p_name: string }; Returns: string }
       current_educator_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
@@ -1154,6 +1158,17 @@ export type Database = {
       }
       has_course_access: { Args: { p_course_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      move_chapter_item: {
+        Args: {
+          p_course_id: string
+          p_item_id: string
+          p_kind: string
+          p_to_index: number
+          p_to_module_id: string
+        }
+        Returns: undefined
+      }
+      renumber_chapter: { Args: { p_module_id: string }; Returns: undefined }
       review_submission: {
         Args: {
           p_body?: string
