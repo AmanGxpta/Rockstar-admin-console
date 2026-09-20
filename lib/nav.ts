@@ -22,7 +22,7 @@ export const NAV: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: "grid", href: "/educator" },
       { label: "Courses", icon: "book", href: "/educator/courses" },
-      { label: "Submissions", icon: "image", href: "/educator/submissions", badge: 3 },
+      { label: "Submissions", icon: "image", href: "/educator/submissions" },
       { label: "Messages", icon: "message", href: "/educator/messages", badge: 4 },
     ],
   },

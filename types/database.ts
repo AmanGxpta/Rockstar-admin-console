@@ -841,6 +841,147 @@ export type Database = {
           },
         ]
       }
+      submission_feedback: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          resulting_status: Database["public"]["Enums"]["submission_status"]
+          submission_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          resulting_status: Database["public"]["Enums"]["submission_status"]
+          submission_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          resulting_status?: Database["public"]["Enums"]["submission_status"]
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_feedback_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_feedback_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submission_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["lesson_block_kind"]
+          path: string
+          position: number
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["lesson_block_kind"]
+          path: string
+          position?: number
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["lesson_block_kind"]
+          path?: string
+          position?: number
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_media_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submissions: {
+        Row: {
+          course_id: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          module_id: string | null
+          response: string
+          reviewed_at: string | null
+          revision_count: number
+          status: Database["public"]["Enums"]["submission_status"]
+          submitted_at: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          module_id?: string | null
+          response?: string
+          reviewed_at?: string | null
+          revision_count?: number
+          status?: Database["public"]["Enums"]["submission_status"]
+          submitted_at?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          module_id?: string | null
+          response?: string
+          reviewed_at?: string | null
+          revision_count?: number
+          status?: Database["public"]["Enums"]["submission_status"]
+          submitted_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -1013,9 +1154,21 @@ export type Database = {
       }
       has_course_access: { Args: { p_course_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      review_submission: {
+        Args: {
+          p_body?: string
+          p_status: Database["public"]["Enums"]["submission_status"]
+          p_submission_id: string
+        }
+        Returns: undefined
+      }
       revoke_entitlement: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: undefined
+      }
+      submission_id_from_object_path: {
+        Args: { p_name: string }
+        Returns: string
       }
       submit_exam: {
         Args: { p_answers: Json; p_course_id: string }
@@ -1051,6 +1204,7 @@ export type Database = {
       lesson_block_kind: "video" | "text" | "image" | "pdf" | "embed"
       purchase_status: "pending" | "paid" | "failed" | "refunded" | "cancelled"
       quiz_question_type: "mc" | "multi" | "image" | "order"
+      submission_status: "pending" | "approved" | "needs_revision"
       user_role: "student" | "educator" | "admin" | "super-admin"
     }
     CompositeTypes: {
@@ -1187,6 +1341,7 @@ export const Constants = {
       lesson_block_kind: ["video", "text", "image", "pdf", "embed"],
       purchase_status: ["pending", "paid", "failed", "refunded", "cancelled"],
       quiz_question_type: ["mc", "multi", "image", "order"],
+      submission_status: ["pending", "approved", "needs_revision"],
       user_role: ["student", "educator", "admin", "super-admin"],
     },
   },

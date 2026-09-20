@@ -1,7 +1,15 @@
 /**
- * Static seed/mock data for the educator + admin portals. Stands in for the
- * Supabase-backed content tables until those are wired up — shapes here are
- * meant to map cleanly onto future `courses`, `educators`, `students`, etc.
+ * What is left of the portals' mock data.
+ *
+ * Everything here stood in for a Supabase table until that table existed. Most
+ * of it no longer has a reader: the course, student, educator, certificate and
+ * revenue screens all query the database now, and the review queue joined them
+ * when `submissions` got its screens — the `Submission` type and its rows were
+ * deleted with that change rather than left as a second, wronger answer to
+ * "what work is waiting?".
+ *
+ * The only live use is the educator's Messages view, which has no schema
+ * behind it yet. When messaging lands, this file goes.
  */
 
 export type CourseStatus = "live" | "pending" | "draft" | "archived";
@@ -53,16 +61,6 @@ export type Certification = {
   courseId: string;
   issueDate: string;
   status: "active" | "revoked";
-};
-
-export type Submission = {
-  id: string;
-  studentId: string;
-  courseId: string;
-  moduleTitle: string;
-  submittedAt: string;
-  status: "pending" | "approved" | "needs-revision";
-  response: string;
 };
 
 export type MessageThread = {
@@ -267,57 +265,6 @@ export const CERTIFICATIONS: Certification[] = [
   { id: "cert-3350", studentId: "st-6", courseId: "co-6", issueDate: "2026-04-30", status: "active" },
   { id: "cert-3298", studentId: "st-2", courseId: "co-2", issueDate: "2026-03-11", status: "revoked" },
   { id: "cert-3244", studentId: "st-5", courseId: "co-1", issueDate: "2026-02-14", status: "active" },
-];
-
-export const SUBMISSIONS: Submission[] = [
-  {
-    id: "sub-1",
-    studentId: "st-1",
-    courseId: "co-2",
-    moduleTitle: "Sectioning theory",
-    submittedAt: "2026-08-17T10:20:00",
-    status: "pending",
-    response:
-      "I want to do a full balayage from scratch without asking for help. That's the one I've been avoiding because I'm afraid it won't look right. But I know that's exactly why I need to do it.",
-  },
-  {
-    id: "sub-2",
-    studentId: "st-2",
-    courseId: "co-2",
-    moduleTitle: "Tools & prep",
-    submittedAt: "2026-08-17T08:05:00",
-    status: "pending",
-    response:
-      "My plan is to practice sectioning on a mannequin head every morning before opening, ten minutes a day, until it's second nature.",
-  },
-  {
-    id: "sub-3",
-    studentId: "st-3",
-    courseId: "co-1",
-    moduleTitle: "Final reflection",
-    submittedAt: "2026-08-16T18:40:00",
-    status: "pending",
-    response:
-      "The biggest shift for me was realizing the consultation isn't a formality — it's the whole job. Everything after that is just execution.",
-  },
-  {
-    id: "sub-4",
-    studentId: "st-5",
-    courseId: "co-1",
-    moduleTitle: "Setting expectations",
-    submittedAt: "2026-08-15T14:12:00",
-    status: "approved",
-    response: "Wrote out a script for managing expectations on color corrections specifically.",
-  },
-  {
-    id: "sub-5",
-    studentId: "st-7",
-    courseId: "co-4",
-    moduleTitle: "Graduated bob, start to finish",
-    submittedAt: "2026-08-14T09:30:00",
-    status: "needs-revision",
-    response: "Attached photos of the practice cut — elevation looks off on the left side.",
-  },
 ];
 
 export const MESSAGES: MessageThread[] = [
