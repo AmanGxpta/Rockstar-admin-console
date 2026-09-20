@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { Icon } from "@/components/ui/icon";
 import { RSLogo, Avatar } from "@/components/ui/primitives";
@@ -145,6 +145,7 @@ const menuItemStyle = {
  */
 function AccountRow({ session }: { session: Session }) {
   const { signOut, openUserProfile } = useClerk();
+  const router = useRouter();
   const [menu, setMenu] = useState(false);
 
   return (
@@ -175,9 +176,20 @@ function AccountRow({ session }: { session: Session }) {
               padding: 6,
             }}
           >
+            {/*
+              Profile and Settings are the educator's own screens. An admin has
+              no equivalent pair yet, so they still get Clerk's modal alone
+              rather than a link to a route that does not exist.
+            */}
             {(
               [
-                ["Account settings", "gear", () => openUserProfile()],
+                ...(session.role === "educator"
+                  ? ([
+                      ["Profile", "user", () => router.push("/educator/profile")],
+                      ["Settings", "gear", () => router.push("/educator/settings")],
+                    ] as const)
+                  : []),
+                ["Account settings", "lock", () => openUserProfile()],
                 ["Sign out", "logout", () => signOut({ redirectUrl: "/login" })],
               ] as const
             ).map(([label, icon, run]) => (
