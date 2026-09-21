@@ -63,14 +63,6 @@ export type Certification = {
   status: "active" | "revoked";
 };
 
-export type MessageThread = {
-  id: string;
-  studentId: string;
-  preview: string;
-  lastActivity: string;
-  unread: boolean;
-};
-
 export type Transaction = {
   id: string;
   date: string;
@@ -265,15 +257,6 @@ export const CERTIFICATIONS: Certification[] = [
   { id: "cert-3350", studentId: "st-6", courseId: "co-6", issueDate: "2026-04-30", status: "active" },
   { id: "cert-3298", studentId: "st-2", courseId: "co-2", issueDate: "2026-03-11", status: "revoked" },
   { id: "cert-3244", studentId: "st-5", courseId: "co-1", issueDate: "2026-02-14", status: "active" },
-];
-
-export const MESSAGES: MessageThread[] = [
-  { id: "msg-1", studentId: "st-1", preview: "Quick question about the toning ratios in module 4…", lastActivity: "2026-08-17T11:02:00", unread: true },
-  { id: "msg-2", studentId: "st-4", preview: "Is there a way to get an extension on the final project?", lastActivity: "2026-08-17T09:15:00", unread: true },
-  { id: "msg-3", studentId: "st-6", preview: "Thank you for the feedback on my last submission!", lastActivity: "2026-08-16T20:44:00", unread: true },
-  { id: "msg-4", studentId: "st-3", preview: "Loved the live placement demo, could you post the notes?", lastActivity: "2026-08-16T16:20:00", unread: false },
-  { id: "msg-5", studentId: "st-8", preview: "Signed up for the fades course, excited to start.", lastActivity: "2026-08-15T13:05:00", unread: true },
-  { id: "msg-6", studentId: "st-2", preview: "Following up on my sectioning submission from Tuesday.", lastActivity: "2026-08-14T10:50:00", unread: false },
 ];
 
 export const TRANSACTIONS: Transaction[] = [

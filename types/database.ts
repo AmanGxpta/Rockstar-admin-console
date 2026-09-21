@@ -285,6 +285,106 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          is_muted: boolean
+          joined_at: string
+          last_read_at: string
+          unread_count: number
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          is_muted?: boolean
+          joined_at?: string
+          last_read_at?: string
+          unread_count?: number
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          is_muted?: boolean
+          joined_at?: string
+          last_read_at?: string
+          unread_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string
+          dedupe_key: string | null
+          id: string
+          kind: Database["public"]["Enums"]["conversation_kind"]
+          last_message_at: string
+          last_message_preview: string
+          last_sender_id: string | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          dedupe_key?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["conversation_kind"]
+          last_message_at?: string
+          last_message_preview?: string
+          last_sender_id?: string | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          dedupe_key?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["conversation_kind"]
+          last_message_at?: string
+          last_message_preview?: string
+          last_sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_last_sender_id_fkey"
+            columns: ["last_sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -1006,6 +1106,86 @@ export type Database = {
           },
         ]
       }
+      message_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["lesson_block_kind"]
+          message_id: string
+          path: string
+          position: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["lesson_block_kind"]
+          message_id: string
+          path: string
+          position?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["lesson_block_kind"]
+          message_id?: string
+          path?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_media_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          has_media: boolean
+          id: string
+          is_hidden: boolean
+          sender_id: string
+        }
+        Insert: {
+          body?: string
+          conversation_id: string
+          created_at?: string
+          has_media?: boolean
+          id?: string
+          is_hidden?: boolean
+          sender_id?: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          has_media?: boolean
+          id?: string
+          is_hidden?: boolean
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
@@ -1518,7 +1698,16 @@ export type Database = {
         Args: { p_name: string }
         Returns: string
       }
+      conversation_id_from_object_path: {
+        Args: { p_name: string }
+        Returns: string
+      }
+      course_content_snapshot: { Args: { p_row: Json }; Returns: Json }
       course_id_from_object_path: { Args: { p_name: string }; Returns: string }
+      course_of_trigger_row: {
+        Args: { p_mode: string; p_row: Json }
+        Returns: string
+      }
       current_educator_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: {
@@ -1577,6 +1766,14 @@ export type Database = {
       }
       has_course_access: { Args: { p_course_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_conversation_participant: {
+        Args: { p_conversation: string }
+        Returns: boolean
+      }
+      mark_conversation_read: {
+        Args: { p_conversation: string }
+        Returns: undefined
+      }
       move_chapter_item: {
         Args: {
           p_course_id: string
@@ -1587,15 +1784,27 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_student: {
+        Args: {
+          p_body: string
+          p_kind: Database["public"]["Enums"]["inbox_message_kind"]
+          p_pref_key: string
+          p_preview: string
+          p_sender: string
+          p_subject: string
+          p_user: string
+        }
+        Returns: undefined
+      }
       register_push_token: {
         Args: { p_platform: string; p_token: string }
         Returns: undefined
       }
+      renumber_chapter: { Args: { p_module_id: string }; Returns: undefined }
       request_course_review: {
         Args: { p_course_id: string; p_note?: string }
         Returns: undefined
       }
-      renumber_chapter: { Args: { p_module_id: string }; Returns: undefined }
       review_submission: {
         Args: {
           p_body?: string
@@ -1607,6 +1816,10 @@ export type Database = {
       revoke_entitlement: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: undefined
+      }
+      start_conversation: {
+        Args: { p_course_id?: string; p_with_user: string }
+        Returns: string
       }
       submission_id_from_object_path: {
         Args: { p_name: string }
@@ -1631,9 +1844,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      withdraw_course_review: { Args: { p_course_id: string }; Returns: undefined }
+      user_has_course_access: {
+        Args: { p_course: string; p_user: string }
+        Returns: boolean
+      }
+      withdraw_course_review: {
+        Args: { p_course_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      conversation_kind: "educator" | "direct"
       course_category:
         | "color"
         | "cutting"
@@ -1791,6 +2012,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      conversation_kind: ["educator", "direct"],
       course_category: ["color", "cutting", "styling", "editorial", "business"],
       course_level: ["beginner", "intermediate", "advanced"],
       course_review_state: [
@@ -1806,6 +2028,16 @@ export const Constants = {
       lesson_block_kind: ["video", "text", "image", "pdf", "embed"],
       purchase_status: ["pending", "paid", "failed", "refunded", "cancelled"],
       quiz_question_type: ["mc", "multi", "image", "order"],
+      resource_kind: [
+        "pdf",
+        "document",
+        "sheet",
+        "slides",
+        "image",
+        "audio",
+        "video",
+        "archive",
+      ],
       submission_status: ["pending", "approved", "needs_revision"],
       user_role: ["student", "educator", "admin", "super-admin"],
     },
