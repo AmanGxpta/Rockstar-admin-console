@@ -20,12 +20,10 @@ import {
 import type { MessageableStudent, ThreadMessage, ThreadSummary } from "@/lib/messages";
 
 /**
- * Against the wall clock, not `seed-data`'s.
- *
- * `relativeTime` in lib/seed-data.ts measures from a frozen
- * `2026-08-17T18:00:00`, which is right for demo rows authored around that
- * date and wrong for anything real — a message sent a minute ago comes back as
- * days old. These rows are real.
+ * Phrased for a thread list — "just now", "4m ago" — where
+ * `lib/submissions.ts` phrases the same idea for a review queue reading as a
+ * backlog. Two shapes of the same function rather than one with a mode
+ * argument; there is no third caller to make it worth unifying.
  */
 function ago(iso: string): string {
   const minutes = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));

@@ -286,17 +286,6 @@ export function certificationsByStudent(id: string) {
   return CERTIFICATIONS.filter((c) => c.studentId === id);
 }
 
-export function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = new Date("2026-08-17T18:00:00").getTime();
-  const diffMin = Math.round((now - then) / 60000);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.round(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.round(diffHr / 24);
-  return `${diffDay}d ago`;
-}
-
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
