@@ -48,7 +48,11 @@ export function CourseActions({
 
   const decide = (approve: boolean) => {
     start(async () => {
-      const result = await decideReview({ courseId, approve, note });
+      const result = await decideReview({
+        courseId,
+        approve,
+        note: approve ? "" : note,
+      });
       if ("error" in result) {
         setToast(result.error);
         return;
@@ -94,23 +98,13 @@ export function CourseActions({
               fontSize: 13.5,
               color: "var(--text-secondary)",
               lineHeight: 1.65,
-              margin: "0 0 14px",
+              margin: 0,
             }}
           >
             {isPublished
               ? `${title} stays live, and the changes since it was last approved are signed off. ${educatorName} will be told.`
               : `${title} goes into the catalog immediately. ${educatorName} will be told.`}
           </p>
-
-          <div className="rs-label" style={{ marginBottom: 8 }}>
-            A note with the approval (optional)
-          </div>
-          <Textarea
-            value={note}
-            onChange={setNote}
-            rows={3}
-            placeholder="Lovely work on chapter 2…"
-          />
         </Modal>
 
         <Modal

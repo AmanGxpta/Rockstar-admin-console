@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
+import { getNotificationInbox } from "@/lib/notifications";
 import { Sidebar } from "./sidebar";
+import { NotificationPanel } from "./notification-panel";
 import type { Session } from "@/lib/session";
 
-export function WebShell({
+export async function WebShell({
   session,
   title,
   sub,
@@ -20,6 +22,8 @@ export function WebShell({
   back?: string;
   children: ReactNode;
 }) {
+  const notifications = await getNotificationInbox();
+
   return (
     <div
       className="rs"
@@ -109,35 +113,11 @@ export function WebShell({
             </span>
           </div>
 
-          <div
-            className="rs-iconbtn"
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: "var(--r-sm)",
-              background: "var(--dark-2)",
-              border: "0.5px solid var(--border-mid)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-              cursor: "pointer",
-            }}
-          >
-            <Icon name="bell" size={17} c="var(--text-secondary)" />
-            <div
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 9,
-                width: 6,
-                height: 6,
-                borderRadius: 99,
-                background: "var(--red)",
-                border: "1.5px solid var(--dark-2)",
-              }}
-            />
-          </div>
+          <NotificationPanel
+            messages={notifications.items}
+            initialUnread={notifications.unread}
+            role={session.role}
+          />
 
           {actions}
         </header>
