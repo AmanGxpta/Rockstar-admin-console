@@ -134,15 +134,33 @@ export function toDraft(
   };
 }
 
+/**
+ * Whether the question has an answer key — something to mark a student right
+ * or wrong against.
+ *
+ * Split out from `draftQuestionReady` because it is the one condition the
+ * builder enforces *before* letting a second question be started. The rest of
+ * readiness (a prompt, an Image ID's picture) can be filled in later and the
+ * quiz simply stays a draft; an unkeyed question is the one that gets lost,
+ * because a question you have moved on from looks finished in the stepper and
+ * only fails at save.
+ *
+ * A reorder question keys itself: the order its steps are written in *is* the
+ * answer, so it is keyed as soon as there are two steps to order.
+ */
+export function draftAnswerKeyed(q: QuestionDraft): boolean {
+  if (q.type === "order") {
+    return q.choices.filter((c) => c.body.trim()).length >= 2;
+  }
+  return q.choices.some((c) => c.isCorrect && c.body.trim());
+}
+
 export function draftQuestionReady(q: QuestionDraft): boolean {
   if (!q.prompt.trim()) return false;
   // The picture is the question. Without it an Image ID question reaches the
   // student as four labels and nothing to label, so it is not ready to save.
   if (q.type === "image" && !q.mediaUrl) return false;
-  if (q.type === "order") {
-    return q.choices.filter((c) => c.body.trim()).length >= 2;
-  }
-  return q.choices.some((c) => c.isCorrect && c.body.trim());
+  return draftAnswerKeyed(q);
 }
 
 export function draftQuizReady(draft: QuizDraft): boolean {

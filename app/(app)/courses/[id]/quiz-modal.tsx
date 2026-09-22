@@ -11,6 +11,7 @@ import {
   ATTEMPT_OPTIONS,
   QUESTION_TYPES,
   attemptsToLabel,
+  draftAnswerKeyed,
   draftQuestionReady,
   draftQuizReady,
   labelToAttempts,
@@ -61,7 +62,11 @@ export function QuestionEditor({
     onPatch({
       choices: q.choices.map((c) => ({
         ...c,
-        isCorrect: isMulti ? (c.id === id ? !c.isCorrect : c.isCorrect) : c.id === id,
+        isCorrect: isMulti
+          ? c.id === id
+            ? !c.isCorrect
+            : c.isCorrect
+          : c.id === id,
       })),
     });
 
@@ -79,7 +84,9 @@ export function QuestionEditor({
   return (
     <div>
       <Label>Question type</Label>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+      <div
+        style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}
+      >
         {types.map((t) => {
           const on = q.type === t.value;
           return (
@@ -109,7 +116,9 @@ export function QuestionEditor({
                 fontWeight: 700,
                 background: on ? "var(--red-faint)" : "var(--dark)",
                 color: on ? "var(--red-hover)" : "var(--text-secondary)",
-                boxShadow: on ? "inset 0 0 0 1.5px var(--red-hover)" : FIELD_SHADOW,
+                boxShadow: on
+                  ? "inset 0 0 0 1.5px var(--red-hover)"
+                  : FIELD_SHADOW,
               }}
             >
               <Icon
@@ -284,7 +293,9 @@ export function QuestionEditor({
                 fontSize: 14,
                 fontWeight: 600,
                 color:
-                  !isOrder && c.isCorrect ? "var(--leaf-on)" : "var(--text-primary)",
+                  !isOrder && c.isCorrect
+                    ? "var(--leaf-on)"
+                    : "var(--text-primary)",
               }}
             />
 
@@ -377,12 +388,16 @@ export function QuestionEditor({
 export function QuizModal({
   initial,
   chapterTitle,
+  isNew,
   onClose,
   onSaved,
   onDelete,
 }: {
   initial: QuizDraft;
   chapterTitle: string;
+  /** True until this quiz has been written once — a new quiz always has
+      something to save, even before a key is pressed. */
+  isNew: boolean;
   onClose: () => void;
   onSaved: (title: string, isNew: boolean) => void;
   /** Absent for a quiz that has never been saved — there is nothing to delete. */
@@ -393,6 +408,12 @@ export function QuizModal({
   const [tab, setTab] = useState<"questions" | "settings">("questions");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // The draft as it was last written. Compared by serialising both: a draft is
+  // plain JSON built from the same object literals every time, so key order is
+  // stable and stringify is a true equality test for it.
+  const [stored, setStored] = useState<string | null>(
+    isNew ? null : JSON.stringify(initial),
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -414,7 +435,25 @@ export function QuizModal({
       ),
     }));
 
+  /**
+   * Starts another question — but only once this one can be marked.
+   *
+   * An author who moves on from an unkeyed question has no reason to come
+   * back: the stepper shows a numbered tab either way, and nothing says the
+   * question is unanswerable until the whole quiz refuses to save. So the
+   * gate is here, at the moment of leaving, where the missing tick is still
+   * on screen.
+   */
   const addQ = () => {
+    if (!draftAnswerKeyed(q)) {
+      setError(
+        q.type === "order"
+          ? "Write at least two steps for this question before adding another."
+          : "Mark the correct answer for this question before adding another.",
+      );
+      return;
+    }
+    setError(null);
     setDraft((d) => ({ ...d, questions: [...d.questions, newQuestion()] }));
     setIdx(qs.length);
     setTab("questions");
@@ -431,17 +470,26 @@ export function QuizModal({
 
   const save = () => {
     setError(null);
+    const saving = draft;
     start(async () => {
-      const result = await saveQuiz(draft);
+      const result = await saveQuiz(saving);
       if ("error" in result) {
         setError(result.error);
         return;
       }
-      onSaved(draft.title.trim() || "Untitled quiz", onDelete === null);
+      // The modal stays open and the button goes instead. Closing on save
+      // would mean an author who wanted to keep working had to reopen the
+      // quiz, and there would be nothing on screen to show the save landed.
+      setStored(JSON.stringify(saving));
+      onSaved(saving.title.trim() || "Untitled quiz", isNew);
     });
   };
 
   const ready = draftQuizReady(draft);
+  const keyed = draftAnswerKeyed(q);
+  // A quiz that has never been written always has something to save; after
+  // that, only a change does.
+  const dirty = stored === null || JSON.stringify(draft) !== stored;
 
   return (
     <div
@@ -476,7 +524,10 @@ export function QuizModal({
       >
         {/* header */}
         <div
-          style={{ padding: "18px 22px 0", borderBottom: "1px solid var(--border)" }}
+          style={{
+            padding: "18px 22px 0",
+            borderBottom: "1px solid var(--border)",
+          }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
             <div
@@ -520,10 +571,30 @@ export function QuizModal({
                   marginTop: 1,
                 }}
               >
-                {chapterTitle} · {qs.length} question{qs.length === 1 ? "" : "s"}
+                {chapterTitle} · {qs.length} question
+                {qs.length === 1 ? "" : "s"}
               </div>
             </div>
-            <Tag tone={ready ? "leaf" : "gold"}>{ready ? "Ready" : "Draft"}</Tag>
+            <Tag tone={ready ? "leaf" : "gold"}>
+              {ready ? "Ready" : "Draft"}
+            </Tag>
+
+            {/* Next to the badge that says whether the quiz is finished,
+                because the two answer the same question from opposite sides:
+                what state is this in, and is there anything outstanding. It
+                is not in the footer any more — down there it sat beside Add
+                question and Back, which are about moving through the quiz,
+                not about keeping it.
+
+                It is on screen only while there is something to write. Once
+                the save lands it goes, and comes back the moment anything is
+                typed. */}
+            {dirty && (
+              <WBtn sm icon="check2" onClick={save} disabled={pending}>
+                {pending ? "Saving…" : "Save quiz"}
+              </WBtn>
+            )}
+
             <button
               type="button"
               onClick={onClose}
@@ -610,12 +681,19 @@ export function QuizModal({
             <button
               type="button"
               onClick={addQ}
+              disabled={!keyed}
+              title={
+                keyed
+                  ? "Add a question"
+                  : "Mark the correct answer for this question first"
+              }
               style={{
                 padding: "8px 11px",
                 border: "none",
                 background: "none",
-                cursor: "pointer",
-                color: "var(--red-on)",
+                cursor: keyed ? "pointer" : "not-allowed",
+                color: keyed ? "var(--red-on)" : "var(--text-muted)",
+                opacity: keyed ? 1 : 0.55,
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
@@ -624,7 +702,11 @@ export function QuizModal({
                 fontWeight: 700,
               }}
             >
-              <Icon name="plus" size={15} c="var(--red-on)" />
+              <Icon
+                name="plus"
+                size={15}
+                c={keyed ? "var(--red-on)" : "var(--text-muted)"}
+              />
               Add
             </button>
 
@@ -644,8 +726,11 @@ export function QuizModal({
                 fontSize: 12.5,
                 fontWeight: 700,
                 color:
-                  tab === "settings" ? "var(--red-hover)" : "var(--text-secondary)",
-                background: tab === "settings" ? "var(--red-faint)" : "transparent",
+                  tab === "settings"
+                    ? "var(--red-hover)"
+                    : "var(--text-secondary)",
+                background:
+                  tab === "settings" ? "var(--red-faint)" : "transparent",
                 borderBottom:
                   tab === "settings"
                     ? "2px solid var(--red-hover)"
@@ -677,7 +762,10 @@ export function QuizModal({
                   options={ATTEMPT_OPTIONS}
                   value={attemptsToLabel(draft.attemptsAllowed)}
                   onChange={(v) =>
-                    setDraft((d) => ({ ...d, attemptsAllowed: labelToAttempts(v) }))
+                    setDraft((d) => ({
+                      ...d,
+                      attemptsAllowed: labelToAttempts(v),
+                    }))
                   }
                 />
               </div>
@@ -698,7 +786,9 @@ export function QuizModal({
                 <Toggle
                   on={draft.gatesProgress}
                   label="Required to continue course"
-                  onChange={(v) => setDraft((d) => ({ ...d, gatesProgress: v }))}
+                  onChange={(v) =>
+                    setDraft((d) => ({ ...d, gatesProgress: v }))
+                  }
                 />
               </RowSetting>
               {onDelete && (
@@ -728,70 +818,88 @@ export function QuizModal({
           )}
         </div>
 
-        {/* footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "14px 22px",
-            borderTop: "1px solid var(--border)",
-            background: "var(--dark)",
-          }}
-        >
-          {tab === "questions" && (
-            <>
-              <WBtn
-                kind="ghost"
-                sm
-                icon="trash"
-                onClick={delQ}
-                disabled={qs.length === 1}
-              >
-                Delete question
-              </WBtn>
-              <div
-                style={{
-                  marginLeft: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
+        {/* footer — questions only. Settings has nothing to step through, and
+            Save moved to the header, so there is no bar left to draw there. */}
+        {tab === "questions" && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "14px 22px",
+              borderTop: "1px solid var(--border)",
+              background: "var(--dark)",
+            }}
+          >
+            <WBtn
+              kind="ghost"
+              sm
+              icon="trash"
+              onClick={delQ}
+              disabled={qs.length === 1}
+            >
+              Delete question
+            </WBtn>
+            <div
+              style={{
+                marginLeft: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              {/* Says why Add question is greyed out, beside the button it is
+                  about, rather than leaving a dead control to explain itself.
+                  Only where that button is: on an earlier question the way on
+                  is Next, which is not gated. */}
+              {!keyed && active === qs.length - 1 && (
                 <span
                   style={{
-                    fontSize: 12.5,
-                    color: "var(--text-secondary)",
+                    fontSize: 12,
+                    color: "var(--gold-on)",
                     fontWeight: 600,
                   }}
                 >
-                  Question {active + 1} of {qs.length}
+                  {q.type === "order"
+                    ? "Write at least two steps to continue"
+                    : "Tick the correct answer to continue"}
                 </span>
-                <WBtn
-                  kind="ghost"
-                  sm
-                  onClick={() => setIdx((i) => Math.max(0, i - 1))}
-                  disabled={active === 0}
-                >
-                  Back
+              )}
+              <span
+                style={{
+                  fontSize: 12.5,
+                  color: "var(--text-secondary)",
+                  fontWeight: 600,
+                }}
+              >
+                Question {active + 1} of {qs.length}
+              </span>
+              <WBtn
+                kind="ghost"
+                sm
+                onClick={() => setIdx((i) => Math.max(0, i - 1))}
+                disabled={active === 0}
+              >
+                Back
+              </WBtn>
+              {active < qs.length - 1 ? (
+                <WBtn kind="soft" sm onClick={() => setIdx((i) => i + 1)}>
+                  Next
                 </WBtn>
-                {active < qs.length - 1 ? (
-                  <WBtn kind="soft" sm onClick={() => setIdx((i) => i + 1)}>
-                    Next
-                  </WBtn>
-                ) : (
-                  <WBtn kind="soft" sm icon="plus" onClick={addQ}>
-                    Add question
-                  </WBtn>
-                )}
-              </div>
-            </>
-          )}
-          {tab === "settings" && <div style={{ marginLeft: "auto" }} />}
-          <WBtn sm icon="check2" onClick={save} disabled={pending}>
-            {pending ? "Saving…" : "Save quiz"}
-          </WBtn>
-        </div>
+              ) : (
+                <WBtn
+                  kind="soft"
+                  sm
+                  icon="plus"
+                  onClick={addQ}
+                  disabled={!keyed}
+                >
+                  Add question
+                </WBtn>
+              )}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div
