@@ -226,12 +226,29 @@ export async function renameModule(
   return { ok: true };
 }
 
-export async function deleteModule(form: FormData): Promise<void> {
+/**
+ * Deletes a chapter and, by the cascade on module_id, everything in it.
+ *
+ * Takes its arguments rather than a FormData, and reports back rather than
+ * returning void: the only way in is the dustbin in the structure list, which
+ * asks first through a dialog and needs an answer to put in the toast. A form
+ * post that quietly did nothing on an RLS refusal would read as a chapter that
+ * deleted itself and came back.
+ */
+export async function deleteModule(
+  courseId: string,
+  moduleId: string,
+): Promise<ActionResult> {
   await requireTeam();
-  const courseId = str(form, "courseId");
   const supabase = createSupabaseServerClient();
-  await supabase.from("course_modules").delete().eq("id", str(form, "moduleId"));
+  const { error } = await supabase
+    .from("course_modules")
+    .delete()
+    .eq("id", moduleId);
+
+  if (error) return { error: error.message };
   revalidatePath(`/courses/${courseId}`);
+  return { ok: true };
 }
 
 // ----------------------------------------------------------------- lessons --
@@ -408,12 +425,18 @@ export async function moveChapterItem(input: {
   return { ok: true };
 }
 
-export async function deleteLesson(form: FormData): Promise<void> {
+/** Deletes a clip and its blocks. Reports back, for deleteModule's reasons. */
+export async function deleteLesson(
+  courseId: string,
+  lessonId: string,
+): Promise<ActionResult> {
   await requireTeam();
-  const courseId = str(form, "courseId");
   const supabase = createSupabaseServerClient();
-  await supabase.from("lessons").delete().eq("id", str(form, "lessonId"));
+  const { error } = await supabase.from("lessons").delete().eq("id", lessonId);
+
+  if (error) return { error: error.message };
   revalidatePath(`/courses/${courseId}`);
+  return { ok: true };
 }
 
 // ------------------------------------------------------------------ blocks --

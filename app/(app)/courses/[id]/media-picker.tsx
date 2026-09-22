@@ -102,8 +102,14 @@ export function MediaPickerButton(props: Props & { label?: string }) {
   );
 }
 
-/** The full-width control: click or drop a file onto it. */
-export function MediaDropZone(props: Props & { hint?: string }) {
+/**
+ * The full-width control: click or drop a file onto it.
+ *
+ * `label` is the headline on the zone. A clip that already has a file attached
+ * says "Change media", because dropping onto it replaces what is there — an
+ * "Upload media" button over an attached video reads as a second slot.
+ */
+export function MediaDropZone(props: Props & { hint?: string; label?: string }) {
   const { busy, error, run } = useUploader(props);
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -183,7 +189,7 @@ export function MediaDropZone(props: Props & { hint?: string }) {
               color: "var(--text-primary)",
             }}
           >
-            {busy ? "Uploading…" : "Upload media"}
+            {busy ? "Uploading…" : (props.label ?? "Upload media")}
           </span>
           <span
             id={describedBy}

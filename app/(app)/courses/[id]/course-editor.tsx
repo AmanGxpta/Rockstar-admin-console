@@ -12,11 +12,13 @@ import {
 
 import { CoverEditor } from "@/components/ui/cover-picker";
 import { Icon } from "@/components/ui/icon";
-import { Card, SectionH, Tag, WBtn } from "@/components/ui/primitives";
+import { Card, Modal, SectionH, Tag, WBtn } from "@/components/ui/primitives";
 import { Toast } from "@/components/ui/controls";
 import {
   addLesson,
   addModule,
+  deleteLesson,
+  deleteModule,
   moveChapterItem,
   renameModule,
 } from "@/lib/course-actions";
@@ -62,6 +64,12 @@ type Drag = {
 
 /** A gap between two cards, which is what a drop actually targets. */
 type Gap = { moduleId: string; index: number };
+
+/** What the delete dialog is currently asking about. */
+type Doomed =
+  | { kind: "module"; id: string; title: string; count: number }
+  | { kind: "lesson"; id: string; title: string }
+  | null;
 
 function chapterLabel(m: EditorModule) {
   return `${String(m.position).padStart(2, "0")} · ${m.title}`;
@@ -124,6 +132,11 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
   const [dragging, setDragging] = useState<Drag | null>(null);
   const [overGap, setOverGap] = useState<Gap | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // What the dustbin is asking about. Deleting a chapter takes its clips and
+  // quizzes with it and deleting a clip takes its blocks, and neither undoes —
+  // so the icon opens a question rather than performing anything.
+  const [confirming, setConfirming] = useState<Doomed>(null);
+  const [deleting, setDeleting] = useState(false);
   const [, start] = useTransition();
   // Scoped to the rename rather than read off the shared transition, which is
   // also true while a clip is being added and would spin the wrong row.
@@ -298,6 +311,39 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
       say("error" in result ? result.error : "Quiz duplicated");
     });
 
+  /**
+   * Answers the dialog. One handler for both kinds: the two deletes differ in
+   * which action they call and in what the dialog said they would take with
+   * them, and in nothing else.
+   */
+  const confirmDelete = () => {
+    const doomed = confirming;
+    if (!doomed) return;
+    setDeleting(true);
+    start(async () => {
+      const result =
+        doomed.kind === "module"
+          ? await deleteModule(course.id, doomed.id)
+          : await deleteLesson(course.id, doomed.id);
+      setDeleting(false);
+      setConfirming(null);
+      if ("error" in result) {
+        say(result.error);
+        return;
+      }
+      // The pane on the right is showing something that no longer exists —
+      // for a chapter, anything that was inside it.
+      if (doomed.kind === "lesson") {
+        setSelected((sel) =>
+          sel?.kind === "lesson" && sel.id === doomed.id ? null : sel,
+        );
+      } else {
+        setSelected(null);
+      }
+      say(doomed.kind === "module" ? "Chapter deleted" : "Clip deleted");
+    });
+  };
+
   const onDeleteQuiz = (quiz: EditorQuiz) =>
     start(async () => {
       const result = await deleteQuiz(course.id, quiz.id);
@@ -312,13 +358,36 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
         style={{
           display: "grid",
           gridTemplateColumns: "320px 1fr",
-          gap: 16,
+          // The two columns are two different jobs — what the course is, and
+          // what you are editing inside it — so the gutter between them is
+          // wider than the 16 that stacks the cards within a column.
+          columnGap: 40,
+          rowGap: 16,
           alignItems: "start",
         }}
       >
         {/* The left column is course-level: what the course is called and
-            what it looks like, then what is in it. */}
-        <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
+            what it looks like, then what is in it.
+
+            minmax(0, 1fr) rather than a bare auto column, and this is load
+            bearing rather than tidiness. A grid item's automatic minimum size
+            is its min-content, and a chapter row's title is `white-space:
+            nowrap` — so a chapter called "Fundamentals of Textured Bobs" gave
+            this column a min-content of 376px, the track grew past the 320px
+            it had been given, and both cards rendered 57px wider than their
+            column. What they overflowed onto was the gutter: the whole of it,
+            plus 17px of the editing panel. The gap was always being drawn and
+            the Cover card was always painted over it, which is why widening
+            it changed nothing. Capping the track at 0 lets the ellipsis these
+            rows already carry do the job instead. */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr)",
+            gap: 16,
+            alignContent: "start",
+          }}
+        >
           <Card pad={16}>
             <SectionH>Cover</SectionH>
             <CoverEditor
@@ -491,6 +560,15 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                     onStartRename={() => setRenaming(m.id)}
                     onCommit={(title) => commitRename(m, title)}
                     onCancel={() => setRenaming(null)}
+                    onDelete={() =>
+                      setConfirming({
+                        kind: "module",
+                        id: m.id,
+                        title:
+                          pendingName?.id === m.id ? pendingName.title : m.title,
+                        count: items.length,
+                      })
+                    }
                   />
                   </div>
 
@@ -547,51 +625,26 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                                   onDelete={() => onDeleteQuiz(item.quiz)}
                                 />
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() =>
+                                <ClipRow
+                                  lesson={item.lesson}
+                                  active={
+                                    selected?.kind === "lesson" &&
+                                    selected.id === item.lesson.id
+                                  }
+                                  onOpen={() =>
                                     setSelected({
                                       kind: "lesson",
                                       id: item.lesson.id,
                                     })
                                   }
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                    width: "100%",
-                                    padding: "8px 10px",
-                                    borderRadius: 9,
-                                    border: "none",
-                                    cursor: "pointer",
-                                    textAlign: "left",
-                                    fontFamily: "var(--font-body)",
-                                    fontSize: 12.5,
-                                    color: "var(--text-secondary)",
-                                    background:
-                                      selected?.kind === "lesson" &&
-                                      selected.id === item.lesson.id
-                                        ? "var(--red-faint)"
-                                        : "transparent",
-                                    fontWeight:
-                                      selected?.kind === "lesson" &&
-                                      selected.id === item.lesson.id
-                                        ? 700
-                                        : 500,
-                                  }}
-                                >
-                                  <Icon
-                                    name="video"
-                                    size={14}
-                                    c={
-                                      selected?.kind === "lesson" &&
-                                      selected.id === item.lesson.id
-                                        ? "var(--red-on)"
-                                        : "var(--text-muted)"
-                                    }
-                                  />
-                                  <span style={ellipsis}>{item.lesson.title}</span>
-                                </button>
+                                  onDelete={() =>
+                                    setConfirming({
+                                      kind: "lesson",
+                                      id: item.lesson.id,
+                                      title: item.lesson.title,
+                                    })
+                                  }
+                                />
                               )}
                             </Draggable>
 
@@ -635,7 +688,11 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
         </div>
 
         {/* ------------------------------------------------------- detail -- */}
-        <div>
+        {/* minWidth:0 for the reason the left column is capped: this track is
+            1fr, which is minmax(auto, 1fr), and its automatic minimum would
+            let a long clip title or file name push the panel wider than the
+            space there is. */}
+        <div style={{ minWidth: 0 }}>
           {current === null && (
             <Card>
               <p
@@ -674,10 +731,15 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
         <QuizModal
           initial={modal.draft}
           chapterTitle={modal.chapterTitle}
+          isNew={modal.isNew}
           onClose={() => setModal(null)}
           onSaved={(title, isNew) => {
             setSelected({ kind: "quiz", id: modal.draft.id });
-            setModal(null);
+            // Left open: the Save button disappearing is what says the save
+            // landed, and an author part-way through a quiz should not have to
+            // reopen it. The quiz exists now, so it stops being new — which is
+            // also what gives it a Delete on the Settings tab.
+            setModal((m) => (m ? { ...m, isNew: false } : m));
             say(isNew ? `“${title}” added to the chapter` : "Quiz saved");
           }}
           onDelete={
@@ -690,6 +752,58 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
           }
         />
       )}
+
+      <Modal
+        open={confirming !== null}
+        onClose={() => {
+          if (!deleting) setConfirming(null);
+        }}
+        title={
+          confirming?.kind === "module" ? "Delete this chapter?" : "Remove this clip?"
+        }
+        width={440}
+        footer={
+          <>
+            <WBtn
+              kind="ghost"
+              sm
+              onClick={() => setConfirming(null)}
+              disabled={deleting}
+            >
+              Cancel
+            </WBtn>
+            <WBtn sm icon="trash" onClick={confirmDelete} disabled={deleting}>
+              {deleting
+                ? "Deleting…"
+                : confirming?.kind === "module"
+                  ? "Delete chapter"
+                  : "Remove clip"}
+            </WBtn>
+          </>
+        }
+      >
+        <p
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-body)",
+            fontSize: 13.5,
+            lineHeight: 1.6,
+            color: "var(--text-secondary)",
+          }}
+        >
+          <b style={{ color: "var(--text-primary)" }}>
+            {confirming?.title || "Untitled"}
+          </b>{" "}
+          {confirming?.kind === "module"
+            ? confirming.count > 0
+              ? `and the ${confirming.count} item${
+                  confirming.count === 1 ? "" : "s"
+                } in it will be deleted.`
+              : "will be deleted."
+            : "and the media attached to it will be removed from the course."}{" "}
+          This can&apos;t be undone.
+        </p>
+      </Modal>
 
       <Toast message={toast} />
     </>
@@ -953,6 +1067,7 @@ function ChapterRow({
   onStartRename,
   onCommit,
   onCancel,
+  onDelete,
 }: {
   chapter: EditorModule;
   /** What to show — the pending name while a rename is in flight. */
@@ -965,6 +1080,8 @@ function ChapterRow({
   onStartRename: () => void;
   onCommit: (title: string) => void;
   onCancel: () => void;
+  /** Opens the confirm dialog. Nothing is deleted from here. */
+  onDelete: () => void;
 }) {
   const [hover, setHover] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -1117,6 +1234,133 @@ function ChapterRow({
           />
         </button>
       )}
+
+      {/* Beside the pencil, and quiet in the same way, because the two are the
+          same kind of thing: what you can do to the chapter itself rather than
+          to what is in it. Hidden while the name is being edited — the row is
+          a text field at that moment, and a delete a few pixels from the tick
+          that saves it is a trap. */}
+      {!renaming && (
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Delete chapter"
+          aria-label={`Delete ${title}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: 2,
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+            opacity: hover ? 1 : 0.4,
+            transition: "opacity .15s ease",
+          }}
+        >
+          <Icon
+            name="trash"
+            size={14}
+            c={hover ? "var(--red-hover)" : "var(--text-muted)"}
+          />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One clip in the structure list.
+ *
+ * It stopped being a single <button> for the reason ChapterRow did: the
+ * dustbin is a button, and a button inside a button is invalid and swallows
+ * the inner click. So the title and the dustbin are two controls sharing a
+ * row, and the row still selects the clip.
+ *
+ * This is the only place a clip is deleted. The editing panel on the right
+ * used to carry a "Remove clip" of its own next to a "Remove" that meant
+ * something else entirely; deleting belongs with the list of what there is to
+ * delete, next to the chapter's dustbin, and reads as one idea there.
+ */
+function ClipRow({
+  lesson,
+  active,
+  onOpen,
+  onDelete,
+}: {
+  lesson: EditorLesson;
+  active: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        borderRadius: 9,
+        background: active ? "var(--red-faint)" : "transparent",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flex: 1,
+          minWidth: 0,
+          padding: "8px 2px 8px 10px",
+          borderRadius: 9,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          textAlign: "left",
+          fontFamily: "var(--font-body)",
+          fontSize: 12.5,
+          color: "var(--text-secondary)",
+          fontWeight: active ? 700 : 500,
+        }}
+      >
+        <Icon
+          name="video"
+          size={14}
+          c={active ? "var(--red-on)" : "var(--text-muted)"}
+        />
+        <span style={ellipsis}>{lesson.title}</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onDelete}
+        title="Remove clip"
+        aria-label={`Remove ${lesson.title}`}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexShrink: 0,
+          padding: "2px 8px 2px 2px",
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          // Quiet rather than absent, the way the chapter pencil is: a control
+          // that only exists under the pointer cannot be found by anyone
+          // looking for it.
+          opacity: hover ? 1 : 0.35,
+          transition: "opacity .15s ease",
+        }}
+      >
+        <Icon
+          name="trash"
+          size={13}
+          c={hover ? "var(--red-hover)" : "var(--text-muted)"}
+        />
+      </button>
     </div>
   );
 }

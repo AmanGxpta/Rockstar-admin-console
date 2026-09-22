@@ -10,13 +10,7 @@ import {
   Textarea,
   WBtn,
 } from "@/components/ui/primitives";
-import {
-  deleteBlock,
-  deleteLesson,
-  deleteModule,
-  saveClip,
-  type ActionResult,
-} from "@/lib/course-actions";
+import { saveClip, type ActionResult } from "@/lib/course-actions";
 import type { EditorLesson, LessonBlockKind } from "@/lib/course-tree";
 import type { UploadedMedia } from "@/lib/media-upload";
 
@@ -42,6 +36,20 @@ function clock(seconds: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** The fields an author types, which are what Save is offered for. */
+type Typed = {
+  title: string;
+  caption: string;
+  kind: string;
+  isPreview: boolean;
+};
+
+/** Everything a save writes: the typed fields plus the attached file. */
+type Saved = Typed & {
+  url: string | null;
+  durationSeconds: number | null;
+};
+
 function FormError({ state }: { state: ActionResult | null }) {
   if (!state || !("error" in state)) return null;
   return (
@@ -58,40 +66,6 @@ function FormError({ state }: { state: ActionResult | null }) {
   );
 }
 
-/** A delete control that is a real form post, so it works without JS. */
-export function DeleteButton({
-  kind,
-  courseId,
-  id,
-  label,
-}: {
-  kind: "module" | "lesson" | "block";
-  courseId: string;
-  id: string;
-  label: string;
-}) {
-  const action =
-    kind === "module"
-      ? deleteModule
-      : kind === "lesson"
-        ? deleteLesson
-        : deleteBlock;
-  const field =
-    kind === "module" ? "moduleId" : kind === "lesson" ? "lessonId" : "blockId";
-
-  return (
-    <form action={action}>
-      <input type="hidden" name="courseId" value={courseId} />
-      <input type="hidden" name={field} value={id} />
-      <WBtn type="submit" kind="text" sm>
-        {label}
-      </WBtn>
-    </form>
-  );
-}
-
-
-
 /**
  * The whole clip: a title, a caption, the format, and the one file attached.
  *
@@ -99,6 +73,24 @@ export function DeleteButton({
  * once. There is no block list and no add-a-block row — a clip is one piece of
  * media with something written under it, and the editor should not ask for
  * more structure than that.
+ *
+ * Two things save on their own terms. A file that finishes uploading is saved
+ * immediately, because by then it is already in the bucket and a Save the
+ * author never pressed is the difference between a clip that plays and an
+ * orphaned object. The typed fields are not: they save when Save is pressed,
+ * and Save is only on screen while one of them differs from what is stored —
+ * a button that is always lit says nothing about whether there is anything to
+ * keep.
+ *
+ * The auto-save carries whatever is typed at that moment along with the file,
+ * so an upload leaves the panel clean rather than saving half of it.
+ *
+ * Deleting the clip is not here. It is the dustbin on the clip's row in the
+ * structure list, which is also where a chapter is deleted — this panel used
+ * to carry both "Remove" (detach the file) and "Remove clip" (delete the
+ * lesson) a line apart, and the pair read as one control that had been drawn
+ * twice. What replaced detaching is the drop zone itself: it says "Change
+ * media" once something is attached, and a new file replaces the old.
  */
 export function ClipForm({
   courseId,
@@ -126,29 +118,77 @@ export function ClipForm({
   const [state, setState] = useState<ActionResult | null>(null);
   const [saving, start] = useTransition();
 
+  // What the typed fields looked like at the last successful save. Compared
+  // against the live ones to decide whether Save has anything to do. Format is
+  // in here with the other three: it is an editable control on the same panel,
+  // and leaving it out would let an author switch a clip from Video to PDF
+  // with no way to keep the change.
+  const [stored, setStored] = useState<Typed>({
+    title: lesson.title,
+    caption: block?.body ?? "",
+    kind: block && block.kind !== "text" ? block.kind : "video",
+    isPreview: lesson.is_preview,
+  });
+
+  const dirty =
+    title !== stored.title ||
+    caption !== stored.caption ||
+    kind !== stored.kind ||
+    isPreview !== stored.isPreview;
+
+  /**
+   * One save path for both the button and the upload.
+   *
+   * `patch` is what the upload knows and the component's state does not yet:
+   * setState is queued, so reading `url` back here right after setUrl would
+   * save the file the clip had before this one.
+   */
+  const persist = (patch: Partial<Saved> = {}) =>
+    start(async () => {
+      const next: Saved = {
+        title,
+        caption,
+        kind,
+        isPreview,
+        url,
+        durationSeconds: duration,
+        ...patch,
+      };
+
+      const result = await saveClip({
+        courseId,
+        lessonId: lesson.id,
+        title: next.title,
+        caption: next.caption,
+        kind: next.kind as LessonBlockKind,
+        url: next.url,
+        durationSeconds: next.durationSeconds,
+        isPreview: next.isPreview,
+      });
+
+      setState(result);
+      if (!("error" in result)) {
+        setStored({
+          title: next.title,
+          caption: next.caption,
+          kind: next.kind,
+          isPreview: next.isPreview,
+        });
+      }
+    });
+
   const onUploaded = (media: UploadedMedia) => {
     setUrl(media.path);
     setKind(media.kind);
     setDuration(media.durationSeconds);
     setFileName(media.fileName);
     setState(null);
-  };
-
-  const save = () =>
-    start(async () => {
-      setState(
-        await saveClip({
-          courseId,
-          lessonId: lesson.id,
-          title,
-          caption,
-          kind: kind as LessonBlockKind,
-          url,
-          durationSeconds: duration,
-          isPreview,
-        }),
-      );
+    persist({
+      kind: media.kind,
+      url: media.path,
+      durationSeconds: media.durationSeconds,
     });
+  };
 
   const formatLabel = FORMATS.find((f) => f.value === kind)?.label ?? "Video";
 
@@ -204,30 +244,6 @@ export function ClipForm({
                 ? `${formatLabel} attached — ${fileName ?? url.split("/").pop()}`
                 : "Nothing attached yet — drop a file below."}
             </span>
-            {url && (
-              <button
-                type="button"
-                onClick={() => {
-                  setUrl(null);
-                  setDuration(null);
-                  setFileName(null);
-                }}
-                style={{
-                  marginLeft: "auto",
-                  border: "none",
-                  background: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  color: "var(--red-on)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}
-              >
-                Remove
-              </button>
-            )}
           </div>
         </div>
 
@@ -282,17 +298,40 @@ export function ClipForm({
               display: "flex",
               gap: 10,
               alignItems: "center",
+              // Held open so the checkbox does not slide sideways every time
+              // the button comes and goes.
+              minHeight: 34,
             }}
           >
-            <DeleteButton
-              kind="lesson"
-              courseId={courseId}
-              id={lesson.id}
-              label="Remove clip"
-            />
-            <WBtn type="button" sm icon="check2" onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
-            </WBtn>
+            {saving ? (
+              <span
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
+                }}
+              >
+                Saving…
+              </span>
+            ) : dirty ? (
+              <WBtn type="button" sm icon="check2" onClick={() => persist()}>
+                Save
+              </WBtn>
+            ) : (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
+                }}
+              >
+                <Icon name="check2" size={13} c="var(--success)" />
+                Saved
+              </span>
+            )}
           </div>
         </div>
 
@@ -303,9 +342,10 @@ export function ClipForm({
             courseId={courseId}
             lessonId={lesson.id}
             onUploaded={onUploaded}
+            label={url ? "Change media" : "Upload media"}
             hint={
               url
-                ? "Drop another file to replace the one attached — then Save."
+                ? "Drop another file to replace the one attached — it saves on its own."
                 : "Video, image, GIF or PDF · drag & drop, or click to choose."
             }
           />
