@@ -34,6 +34,7 @@ import { formatBytes, useCoverRemove, useCoverUpload } from "@/lib/media-upload"
  */
 
 const RATIO = "16 / 9";
+const MAX_W = 480;
 
 /** The same check the bucket makes, made early enough to say why. */
 export function coverProblem(file: File): string | null {
@@ -144,6 +145,9 @@ function CoverFrame({
       style={{
         position: "relative",
         aspectRatio: RATIO,
+        // Left free, 16:9 makes the plate as tall as the form is wide. The cap
+        // keeps it a thumbnail; in the 320px editor column it never applies.
+        maxWidth: MAX_W,
         borderRadius: 14,
         overflow: "hidden",
         border: `2px dashed ${over ? "var(--red-hover)" : src ? "transparent" : "var(--border-mid)"}`,

@@ -2,7 +2,10 @@ import "server-only";
 
 import { auth } from "@clerk/nextjs/server";
 
-import { createSupabaseServerClient } from "./supabase";
+import {
+  createSupabaseAdminClient,
+  createSupabaseServerClient,
+} from "./supabase";
 import type {
   CourseCategory,
   CourseForEditor,
@@ -56,6 +59,57 @@ export async function currentEducatorId(): Promise<string | null> {
     return null;
   }
   return data?.id ?? null;
+}
+
+/**
+ * The same id, creating the profile row if the account has not authored before.
+ *
+ * `courses.educator_id` is NOT NULL against `educator_profiles`, and the Clerk
+ * webhook only ever makes that row for an account whose role is `educator`. So
+ * an admin — who may now author, and under 0003's insert policy always could —
+ * had nothing to attribute a course to and would have hit a foreign key.
+ *
+ * The row is the person, not a job title: it carries a headline and a
+ * specialization the catalog shows beside their courses, and 0013's trigger
+ * mirrors their name and avatar onto it. Attributing team-authored courses to
+ * a single house profile was the alternative and would have made every course
+ * on the platform say the same thing under its title.
+ *
+ * Written with the service-role client because `educator_profiles` has no
+ * insert policy — 0017 added a self-update policy and deliberately nothing
+ * else, since who is an educator is the institute's claim rather than the
+ * account's. Creating your own row on your first upload is that claim being
+ * made by an admin about themselves, which is the one case where it holds.
+ */
+export async function ensureAuthorProfile(): Promise<string | null> {
+  const existing = await currentEducatorId();
+  if (existing) return existing;
+
+  const { userId } = await auth();
+  if (!userId) return null;
+
+  const admin = createSupabaseAdminClient();
+  const { data: user } = await admin
+    .from("users")
+    .select("id, role")
+    .eq("clerk_id", userId)
+    .maybeSingle();
+
+  // Only ever for the team. A student reaching this would be a bug elsewhere,
+  // and making them an author would be the wrong way to find out about it.
+  if (!user || (user.role !== "admin" && user.role !== "educator")) return null;
+
+  const { data, error } = await admin
+    .from("educator_profiles")
+    .upsert({ user_id: user.id }, { onConflict: "user_id" })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("[courses] could not create an author profile:", error.message);
+    return null;
+  }
+  return data.id;
 }
 
 const LIST_SELECT = `

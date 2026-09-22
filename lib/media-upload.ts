@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSession } from "@clerk/nextjs";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
 
-import type { Database } from "@/types/database";
 import { COVER_MAX_BYTES, isCoverMime } from "./course-cover";
 import type { LessonBlockKind } from "./course-tree";
+import { useSupabaseBrowserClient } from "./supabase-browser";
 
 /**
  * Kept in step with `file_size_limit` on the course-media bucket (0012). The
@@ -39,34 +37,6 @@ export function kindForFile(file: File): LessonBlockKind | null {
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-/**
- * Supabase client that authenticates as the signed-in educator, in the
- * browser.
- *
- * Uploads do not go through a server action on purpose: a Server Action body
- * is capped at 1 MB by default, which every clip in this bucket exceeds. The
- * browser talks to Storage directly, and 0009's insert policy — author or
- * admin, resolved from the course id in the object path — is what makes that
- * safe. This client only ever holds the publishable key and Clerk's own
- * session token.
- */
-function useSupabaseBrowserClient() {
-  const { session } = useSession();
-
-  return useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    if (!url || !key) {
-      throw new Error(
-        "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
-      );
-    }
-    return createClient<Database>(url, key, {
-      accessToken: async () => (await session?.getToken()) ?? null,
-    });
-  }, [session]);
 }
 
 /**

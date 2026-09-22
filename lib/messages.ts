@@ -53,13 +53,15 @@ export type MessageableStudent = {
  * same reasoning `lib/submissions.ts` carries about 0016.
  */
 const THREAD_SELECT = `
-  id, course_id, last_message_at, last_message_preview,
+  id, kind, created_by, course_id, last_message_at, last_message_preview,
   course:courses ( id, title ),
   participants:conversation_participants ( user_id, unread_count )
 `;
 
 type ThreadRow = {
   id: string;
+  kind: "educator" | "direct" | "support";
+  created_by: string;
   course_id: string | null;
   last_message_at: string;
   last_message_preview: string;
@@ -130,6 +132,26 @@ async function nameParticipants(
   return out;
 }
 
+/**
+ * Puts this admin on every support thread they are not already on.
+ *
+ * A support thread's participants are a snapshot of the team taken when the
+ * student first wrote in (0035), so an admin added to the platform afterwards
+ * would have an inbox that started at their own join date. Reconciling it here
+ * rather than by trigger means it also repairs itself after a role change, and
+ * the call is one idempotent statement that returns 0 on every load but the
+ * first.
+ */
+export async function joinSupportDesk(): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.rpc("join_support_conversations");
+  // Not fatal. An educator calling it is refused by design, and an inbox that
+  // renders one thread short is better than one that does not render.
+  if (error && !/only the team/.test(error.message)) {
+    console.error("[messages] could not join the support desk:", error.message);
+  }
+}
+
 /** Every thread this account is in, most recently spoken in first. */
 export async function listThreads(): Promise<ThreadSummary[]> {
   const supabase = createSupabaseServerClient();
@@ -148,12 +170,22 @@ export async function listThreads(): Promise<ThreadSummary[]> {
   const rows = (data ?? []) as unknown as ThreadRow[];
   if (!rows.length) return [];
 
-  // 0027's policy returns *both* participants of a thread you are in, which is
-  // what puts the other person's id and your own unread counter in the same
-  // read. Picking them apart is this function's job; PostgREST cannot express
-  // "the embedded row that is not me".
-  const others = rows.map(
-    (row) => (row.participants ?? []).find((p) => p.user_id !== meId)?.user_id ?? "",
+  /*
+    0027's policy returns *both* participants of a thread you are in, which is
+    what puts the other person's id and your own unread counter in the same
+    read. Picking them apart is this function's job; PostgREST cannot express
+    "the embedded row that is not me".
+
+    A support thread is not two people, though — it is one student and the
+    whole team — so "not me" would name whichever colleague happened to sort
+    first. `created_by` is the student on those, by construction: 0035's
+    start_support_conversation() refuses an admin, so nobody else can have
+    opened one.
+  */
+  const others = rows.map((row) =>
+    row.kind === "support"
+      ? row.created_by
+      : ((row.participants ?? []).find((p) => p.user_id !== meId)?.user_id ?? ""),
   );
   const people = await nameParticipants(others);
 
@@ -171,6 +203,31 @@ export async function listThreads(): Promise<ThreadSummary[]> {
     unread_count:
       (row.participants ?? []).find((p) => p.user_id === meId)?.unread_count ?? 0,
   }));
+}
+
+/**
+ * Unread messages across the support desk, for the sidebar badge.
+ *
+ * Filtered to this account's own participant rows: 0027's read policy returns
+ * every participant of every thread you are in, so summing the lot would add
+ * the students' unread counts to the team's.
+ */
+export async function countSupportUnread(): Promise<number> {
+  const supabase = createSupabaseServerClient();
+  const meId = await currentUserId();
+  if (!meId) return 0;
+
+  const { data, error } = await supabase
+    .from("conversation_participants")
+    .select("unread_count")
+    .eq("user_id", meId)
+    .gt("unread_count", 0);
+
+  if (error) {
+    console.error("[messages] unread count failed:", error.message);
+    return 0;
+  }
+  return (data ?? []).reduce((total, row) => total + row.unread_count, 0);
 }
 
 /**

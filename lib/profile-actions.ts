@@ -8,7 +8,7 @@ import {
   readPrefs,
   type NotificationPrefs,
 } from "./notification-prefs";
-import { requireSession } from "./session";
+import { requireTeam } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 
 export type ActionResult = { error: string } | { ok: true };
@@ -35,7 +35,7 @@ export async function updateEducatorProfile(
   _prev: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   const { userId: clerkId } = await auth();
   if (!clerkId) return { error: "Not signed in." };
 
@@ -94,8 +94,8 @@ export async function updateEducatorProfile(
     };
   }
 
-  revalidatePath("/educator/profile");
-  revalidatePath("/educator");
+  revalidatePath("/account/profile");
+  revalidatePath("/courses");
   return { ok: true };
 }
 
@@ -129,7 +129,7 @@ export async function updateEducatorProfile(
 export async function updateNotificationPrefs(
   submitted: Partial<NotificationPrefs>,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   const { userId: clerkId } = await auth();
   if (!clerkId) return { error: "Not signed in." };
 
@@ -158,6 +158,6 @@ export async function updateNotificationPrefs(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/educator/settings");
+  revalidatePath("/account/settings");
   return { ok: true };
 }

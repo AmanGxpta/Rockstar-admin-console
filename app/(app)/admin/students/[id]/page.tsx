@@ -132,7 +132,7 @@ export default async function AdminStudentDetail({
           </div>
           <GrantAccess studentId={student.id} courses={grantable} />
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
-            Enrols the student as well, so the course shows up in their app
+            Enrolls the student as well, so the course shows up in their app
             immediately. Until checkout is built, this is how anyone gets into a
             paid course.
           </div>

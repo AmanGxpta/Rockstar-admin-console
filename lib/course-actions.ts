@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { currentEducatorId } from "./courses";
-import { requireSession } from "./session";
+import { ensureAuthorProfile } from "./courses";
+import { requireSession, requireTeam } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 import type { Database } from "@/types/database";
 
@@ -62,15 +62,15 @@ export async function createCourse(
   _prev: CreatedResult | null,
   form: FormData,
 ): Promise<CreatedResult> {
-  const session = await requireSession("educator");
-  const educatorId = await currentEducatorId();
+  const session = await requireTeam();
+  const educatorId = await ensureAuthorProfile();
 
   if (!educatorId) {
     // The RLS policy would reject the insert anyway; saying so plainly beats
-    // surfacing a Postgres error to an educator.
+    // surfacing a Postgres error to whoever was trying to upload a course.
     return {
       error:
-        "Your account has no educator profile yet. Ask an admin to finish setting it up.",
+        "Your account cannot author courses. Ask an admin to finish setting it up.",
     };
   }
 
@@ -100,8 +100,9 @@ export async function createCourse(
       educator_id: educatorId,
       overview: str(form, "overview"),
       price_cents,
-      // Always starts unpublished: publishing is a separate, deliberate act,
-      // and an admin reviews it first.
+      // Always starts unpublished. Publishing is a separate, deliberate act,
+      // and since 0034 it is also the thing that freezes the course — a new
+      // course created live would be one nobody could then write.
       is_published: false,
     })
     .select("id")
@@ -112,7 +113,7 @@ export async function createCourse(
     return { error: error?.message ?? "Could not create the course." };
   }
 
-  revalidatePath("/educator/courses");
+  revalidatePath("/courses");
   return { ok: true, id: data.id };
 }
 
@@ -128,7 +129,7 @@ export async function setCourseCover(
   courseId: string,
   path: string | null,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   if (!courseId) return { error: "Missing course." };
 
   const supabase = createSupabaseServerClient();
@@ -139,9 +140,9 @@ export async function setCourseCover(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/educator/courses");
-  revalidatePath(`/educator/courses/${courseId}`);
-  revalidatePath("/admin/courses");
+  revalidatePath("/courses");
+  revalidatePath(`/courses/${courseId}`);
+  revalidatePath("/courses");
   return { ok: true };
 }
 
@@ -149,7 +150,7 @@ export async function updateCourseDetails(
   _prev: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   const id = str(form, "courseId");
   if (!id) return { error: "Missing course." };
 
@@ -165,7 +166,7 @@ export async function updateCourseDetails(
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/courses/${id}`);
+  revalidatePath(`/courses/${id}`);
   return { ok: true };
 }
 
@@ -180,7 +181,7 @@ export async function addModule(
   _prev: CreatedResult | null,
   form: FormData,
 ): Promise<CreatedResult> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const title = str(form, "title");
   if (!title) return { error: "Name the chapter." };
@@ -199,7 +200,7 @@ export async function addModule(
   if (error || !data) {
     return { error: error?.message ?? "Could not add the chapter." };
   }
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true, id: data.id };
 }
 
@@ -209,7 +210,7 @@ export async function renameModule(
   moduleId: string,
   title: string,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const clean = title.trim();
   if (!clean) return { error: "A chapter needs a name." };
@@ -221,16 +222,16 @@ export async function renameModule(
     .eq("id", moduleId);
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true };
 }
 
 export async function deleteModule(form: FormData): Promise<void> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const supabase = createSupabaseServerClient();
   await supabase.from("course_modules").delete().eq("id", str(form, "moduleId"));
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 // ----------------------------------------------------------------- lessons --
@@ -239,7 +240,7 @@ export async function addLesson(
   _prev: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const moduleId = str(form, "moduleId");
   const title = str(form, "title");
@@ -258,7 +259,7 @@ export async function addLesson(
   });
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true };
 }
 
@@ -266,7 +267,7 @@ export async function updateLesson(
   _prev: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const lessonId = str(form, "lessonId");
   const title = str(form, "title");
@@ -279,7 +280,7 @@ export async function updateLesson(
     .eq("id", lessonId);
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true };
 }
 
@@ -304,7 +305,7 @@ export async function saveClip(input: {
   durationSeconds: number | null;
   isPreview: boolean;
 }): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const title = input.title.trim();
   if (!title) return { error: "A clip needs a title." };
@@ -341,7 +342,7 @@ export async function saveClip(input: {
         .eq("id", existing.id);
       if (error) return { error: error.message };
     }
-    revalidatePath(`/educator/courses/${input.courseId}`);
+    revalidatePath(`/courses/${input.courseId}`);
     return { ok: true };
   }
 
@@ -363,7 +364,7 @@ export async function saveClip(input: {
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/educator/courses/${input.courseId}`);
+  revalidatePath(`/courses/${input.courseId}`);
   return { ok: true };
 }
 
@@ -390,7 +391,7 @@ export async function moveChapterItem(input: {
   toModuleId: string;
   toIndex: number;
 }): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.rpc("move_chapter_item", {
@@ -403,16 +404,16 @@ export async function moveChapterItem(input: {
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/educator/courses/${input.courseId}`);
+  revalidatePath(`/courses/${input.courseId}`);
   return { ok: true };
 }
 
 export async function deleteLesson(form: FormData): Promise<void> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const supabase = createSupabaseServerClient();
   await supabase.from("lessons").delete().eq("id", str(form, "lessonId"));
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 // ------------------------------------------------------------------ blocks --
@@ -421,7 +422,7 @@ export async function addBlock(
   _prev: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const lessonId = str(form, "lessonId");
   const kind = str(form, "kind");
@@ -459,16 +460,16 @@ export async function addBlock(
   });
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true };
 }
 
 export async function deleteBlock(form: FormData): Promise<void> {
-  await requireSession("educator");
+  await requireTeam();
   const courseId = str(form, "courseId");
   const supabase = createSupabaseServerClient();
   await supabase.from("lesson_blocks").delete().eq("id", str(form, "blockId"));
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
 }
 
 // -------------------------------------------------------------- publishing --
@@ -491,8 +492,8 @@ export async function setPublished(form: FormData): Promise<void> {
 
   if (error) console.error("[courses] publish toggle failed:", error.message);
 
-  revalidatePath("/admin/courses");
-  revalidatePath(`/admin/courses/${id}`);
+  revalidatePath("/courses");
+  revalidatePath(`/courses/${id}`);
 }
 
 /**
@@ -515,8 +516,8 @@ export async function setFeatured(form: FormData): Promise<void> {
 
   if (error) console.error("[courses] feature toggle failed:", error.message);
 
-  revalidatePath("/admin/courses");
-  revalidatePath(`/admin/courses/${id}`);
+  revalidatePath("/courses");
+  revalidatePath(`/courses/${id}`);
 }
 
 /*

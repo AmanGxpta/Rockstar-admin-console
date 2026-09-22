@@ -24,7 +24,7 @@ export async function sendReply(
   conversationId: string,
   body: string,
 ): Promise<MessageResult> {
-  await requireSession("educator");
+  await requireSession("admin");
 
   const text = body.trim();
 
@@ -43,41 +43,39 @@ export async function sendReply(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/educator/messages");
+  revalidatePath("/messages");
   return { ok: true };
 }
 
 /**
- * Opens a thread with a student, or returns the one already open.
+ * Opens the support thread with a student, or returns the one already open.
  *
- * `start_conversation()` is idempotent — 0027 keys it on an order-independent
- * `dedupe_key` — so compose and "carry on where we left off" are the same call
- * and this never has to know which it is doing.
+ * Through `open_support_conversation()` (0035) rather than 0027's
+ * `start_conversation()`, and the difference is the whole point of this
+ * screen: start_conversation() would open a second thread, of kind `educator`,
+ * between that student and whichever admin happened to press the button. There
+ * is one handle now, so the team writing first has to land in the same thread
+ * the student would have opened themselves — which it does, because both verbs
+ * key on the same `dedupe_key`.
  *
- * The refusal is passed through rather than flattened into a generic failure.
- * The realistic reason is a lapsed entitlement: the compose list is built from
- * `enrollments`, because that is what an educator may read, while the function
- * checks `entitlements`, so a student who has stopped paying is still on the
- * list and is refused here. The message the database raises says exactly that,
- * and is more useful than anything this layer could invent.
+ * `courseId` is gone from the signature for the same reason. A support thread
+ * is about the person, not about one of their courses; 0027 keyed its dedupe
+ * on the course as well, which is what made "the same student, twice" a real
+ * case there and not one here.
  */
 export async function startThreadWithStudent(
   studentUserId: string,
-  courseId: string | null,
 ): Promise<StartResult> {
-  await requireSession("educator");
+  await requireSession("admin");
 
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("start_conversation", {
-    p_with_user: studentUserId,
-    // `undefined` rather than null: p_course_id is DEFAULT null in 0027, so
-    // the generated type spells "not given" as an absent key.
-    p_course_id: courseId ?? undefined,
+  const { data, error } = await supabase.rpc("open_support_conversation", {
+    p_student: studentUserId,
   });
 
   if (error) return { error: error.message };
 
-  revalidatePath("/educator/messages");
+  revalidatePath("/messages");
   return { ok: true, conversationId: data as string };
 }
 
@@ -91,7 +89,7 @@ export async function startThreadWithStudent(
 export async function markThreadRead(
   conversationId: string,
 ): Promise<MessageResult> {
-  await requireSession("educator");
+  await requireSession("admin");
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.rpc("mark_conversation_read", {
@@ -100,7 +98,7 @@ export async function markThreadRead(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/educator/messages");
+  revalidatePath("/messages");
   return { ok: true };
 }
 
@@ -121,7 +119,7 @@ export async function markThreadRead(
 export async function fetchThread(
   conversationId: string,
 ): Promise<ThreadResult> {
-  await requireSession("educator");
+  await requireSession("admin");
 
   try {
     return { ok: true, messages: await getThreadMessages(conversationId) };

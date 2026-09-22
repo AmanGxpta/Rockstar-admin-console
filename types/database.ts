@@ -388,6 +388,67 @@ export type Database = {
           },
         ]
       }
+      course_access_requests: {
+        Row: {
+          course_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          note: string | null
+          state: Database["public"]["Enums"]["access_request_state"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          note?: string | null
+          state?: Database["public"]["Enums"]["access_request_state"]
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          note?: string | null
+          state?: Database["public"]["Enums"]["access_request_state"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_access_requests_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_access_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_access_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -1786,6 +1847,32 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      decide_course_access_request: {
+        Args: {
+          p_approve: boolean
+          p_months?: number
+          p_note?: string
+          p_request_id: string
+        }
+        Returns: {
+          course_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          note: string | null
+          state: Database["public"]["Enums"]["access_request_state"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "course_access_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       decide_course_review: {
         Args: { p_approve: boolean; p_course_id: string; p_note?: string }
         Returns: undefined
@@ -1842,6 +1929,7 @@ export type Database = {
         Args: { p_conversation: string }
         Returns: boolean
       }
+      join_support_conversations: { Args: never; Returns: number }
       mark_conversation_read: {
         Args: { p_conversation: string }
         Returns: undefined
@@ -1868,6 +1956,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      open_support_conversation: {
+        Args: { p_student: string }
+        Returns: string
+      }
       preview_text: {
         Args: { p_body: string; p_limit?: number }
         Returns: string
@@ -1877,6 +1969,10 @@ export type Database = {
         Returns: undefined
       }
       renumber_chapter: { Args: { p_module_id: string }; Returns: undefined }
+      request_course_access: {
+        Args: { p_course_id: string; p_note?: string }
+        Returns: string
+      }
       request_course_review: {
         Args: { p_course_id: string; p_note?: string }
         Returns: undefined
@@ -1897,6 +1993,7 @@ export type Database = {
         Args: { p_course_id?: string; p_with_user: string }
         Returns: string
       }
+      start_support_conversation: { Args: never; Returns: string }
       submission_id_from_object_path: {
         Args: { p_name: string }
         Returns: string
@@ -1940,6 +2037,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      support_conversation_for: { Args: { p_student: string }; Returns: string }
       user_has_course_access: {
         Args: { p_course: string; p_user: string }
         Returns: boolean
@@ -1950,7 +2048,8 @@ export type Database = {
       }
     }
     Enums: {
-      conversation_kind: "educator" | "direct"
+      access_request_state: "pending" | "approved" | "declined" | "withdrawn"
+      conversation_kind: "educator" | "direct" | "support"
       course_category:
         | "color"
         | "cutting"
@@ -2108,7 +2207,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      conversation_kind: ["educator", "direct"],
+      access_request_state: ["pending", "approved", "declined", "withdrawn"],
+      conversation_kind: ["educator", "direct", "support"],
       course_category: ["color", "cutting", "styling", "editorial", "business"],
       course_level: ["beginner", "intermediate", "advanced"],
       course_review_state: [

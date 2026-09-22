@@ -1,7 +1,26 @@
+import { cache } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@clerk/nextjs/server";
 
 import type { Database } from "@/types/database";
+
+/**
+ * The Clerk session token, fetched at most once per request.
+ *
+ * `accessToken` below is not called once per client — supabase-js calls it
+ * before *every* request it sends. There are 67 `createSupabaseServerClient()`
+ * call sites and a single screen commonly fires six or seven queries, so
+ * without this the same token was minted six or seven times over, each one a
+ * round trip to Clerk. Measured from here, a Clerk call is ~320ms against
+ * ~40ms for Supabase, which made token-minting — not the data — the bulk of
+ * what a page spent its time on.
+ *
+ * `cache` is React's request-scoped memo, so this is per request rather than
+ * process-wide: two people's tokens never meet, and nothing is held between
+ * requests. A token cannot meaningfully expire inside the second or so a
+ * render lasts, which is the only window it is reused across.
+ */
+const sessionToken = cache(async () => (await auth()).getToken());
 
 /**
  * Supabase client that authenticates as the current Clerk user.
@@ -23,7 +42,7 @@ export function createSupabaseServerClient() {
   }
 
   return createClient<Database>(url, key, {
-    accessToken: async () => (await auth()).getToken(),
+    accessToken: sessionToken,
   });
 }
 

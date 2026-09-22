@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { Icon } from "@/components/ui/icon";
 import { RSLogo, Avatar } from "@/components/ui/primitives";
-import { navFor, type NavItem } from "@/lib/nav";
+import { navFor, type NavBadges, type NavItem } from "@/lib/nav";
 import type { Session } from "@/lib/session";
 
 function itemStyle(active: boolean, inert: boolean) {
@@ -26,7 +26,15 @@ function itemStyle(active: boolean, inert: boolean) {
   } as const;
 }
 
-function NavRow({ item, active }: { item: NavItem; active: boolean }) {
+function NavRow({
+  item,
+  active,
+  badge,
+}: {
+  item: NavItem;
+  active: boolean;
+  badge?: number;
+}) {
   const inert = item.href === null;
   const content = (
     <>
@@ -37,7 +45,7 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
         sw={active ? 2 : 1.8}
       />
       <span style={{ flex: 1 }}>{item.label}</span>
-      {item.badge && (
+      {badge ? (
         <span
           className="rs-word"
           style={{
@@ -54,9 +62,9 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
             justifyContent: "center",
           }}
         >
-          {item.badge}
+          {badge}
         </span>
-      )}
+      ) : null}
     </>
   );
 
@@ -78,7 +86,13 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function Sidebar({ session }: { session: Session }) {
+export function Sidebar({
+  session,
+  badges,
+}: {
+  session: Session;
+  badges: NavBadges;
+}) {
   const pathname = usePathname();
   const groups = navFor(session.role);
 
@@ -112,6 +126,7 @@ export function Sidebar({ session }: { session: Session }) {
                 key={item.label}
                 item={item}
                 active={item.href === pathname}
+                badge={item.badgeKey ? badges[item.badgeKey] : undefined}
               />
             ))}
           </div>
@@ -177,18 +192,16 @@ function AccountRow({ session }: { session: Session }) {
             }}
           >
             {/*
-              Profile and Settings are the educator's own screens. An admin has
-              no equivalent pair yet, so they still get Clerk's modal alone
-              rather than a link to a route that does not exist.
+              Profile and Settings used to be the educator's alone, because
+              /educator/profile was an educator route. They are /account/* now
+              and both roles get them: an admin who uploads a course is
+              attributed on it exactly as an educator is, so they need somewhere
+              to say who they are.
             */}
             {(
               [
-                ...(session.role === "educator"
-                  ? ([
-                      ["Profile", "user", () => router.push("/educator/profile")],
-                      ["Settings", "gear", () => router.push("/educator/settings")],
-                    ] as const)
-                  : []),
+                ["Profile", "user", () => router.push("/account/profile")],
+                ["Settings", "gear", () => router.push("/account/settings")],
                 ["Account settings", "lock", () => openUserProfile()],
                 ["Sign out", "logout", () => signOut({ redirectUrl: "/login" })],
               ] as const

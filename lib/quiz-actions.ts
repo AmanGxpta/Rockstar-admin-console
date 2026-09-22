@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireSession } from "./session";
+import { requireTeam } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 import type { ActionResult } from "./course-actions";
 import type { QuizDraft } from "./quiz-draft";
@@ -65,7 +65,7 @@ async function nextChapterPosition(moduleId: string): Promise<number> {
 }
 
 export async function saveQuiz(draft: QuizDraft): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const problem = validate(draft);
   if (problem) return { error: problem };
@@ -150,7 +150,7 @@ export async function saveQuiz(draft: QuizDraft): Promise<ActionResult> {
     if (cError) return { error: cError.message };
   }
 
-  revalidatePath(`/educator/courses/${draft.courseId}`);
+  revalidatePath(`/courses/${draft.courseId}`);
   return { ok: true };
 }
 
@@ -158,13 +158,13 @@ export async function deleteQuiz(
   courseId: string,
   quizId: string,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.from("quizzes").delete().eq("id", quizId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true };
 }
 
@@ -178,7 +178,7 @@ export async function duplicateQuiz(
   courseId: string,
   quizId: string,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const supabase = createSupabaseServerClient();
   const { data: source, error: readError } = await supabase
@@ -241,6 +241,6 @@ export async function duplicateQuiz(
     }
   }
 
-  revalidatePath(`/educator/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { ok: true };
 }

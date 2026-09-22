@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireSession } from "./session";
+import { requireSession, requireTeam } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 import type { ActionResult } from "./course-actions";
 
@@ -30,17 +30,17 @@ function plainly(message: string): string {
 }
 
 function touch(courseId: string) {
-  revalidatePath(`/educator/courses/${courseId}`);
-  revalidatePath("/educator/courses");
-  revalidatePath(`/admin/courses/${courseId}`);
-  revalidatePath("/admin/courses");
+  revalidatePath(`/courses/${courseId}`);
+  revalidatePath("/courses");
+  revalidatePath(`/courses/${courseId}`);
+  revalidatePath("/courses");
 }
 
 export async function requestReview(input: {
   courseId: string;
   note: string;
 }): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.rpc("request_course_review", {
@@ -55,7 +55,7 @@ export async function requestReview(input: {
 }
 
 export async function withdrawReview(courseId: string): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.rpc("withdraw_course_review", {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireSession } from "./session";
+import { requireTeam } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 
 /** What a reviewer may rule. `pending` is the student's state, not a verdict. */
@@ -25,7 +25,7 @@ export async function reviewSubmission(
   decision: ReviewDecision,
   note: string,
 ): Promise<ReviewResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const body = note.trim();
 
@@ -45,7 +45,7 @@ export async function reviewSubmission(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/educator/submissions");
-  revalidatePath(`/educator/submissions/${submissionId}`);
+  revalidatePath("/submissions");
+  revalidatePath(`/submissions/${submissionId}`);
   return { ok: true };
 }

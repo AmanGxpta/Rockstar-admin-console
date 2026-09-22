@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireSession } from "./session";
+import { requireTeam } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 import type { ActionResult } from "./course-actions";
 import type { QuestionDraft } from "./quiz-draft";
@@ -17,7 +17,7 @@ export async function saveExamSettings(
   _prev: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const courseId = String(form.get("courseId") ?? "");
   const question_count = num(form, "question_count");
@@ -65,7 +65,7 @@ export async function saveExamSettings(
   });
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/exam/${courseId}`);
+  revalidatePath(`/courses/${courseId}/exam`);
   return { ok: true };
 }
 
@@ -81,7 +81,7 @@ export async function saveExamQuestion(
   draft: QuestionDraft,
   position: number,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   if (!draft.prompt.trim()) return { error: "The question needs a prompt." };
   if (draft.choices.length < 2) {
@@ -129,7 +129,7 @@ export async function saveExamQuestion(
   );
   if (choiceError) return { error: choiceError.message };
 
-  revalidatePath(`/educator/exam/${courseId}`);
+  revalidatePath(`/courses/${courseId}/exam`);
   return { ok: true };
 }
 
@@ -137,7 +137,7 @@ export async function deleteExamQuestion(
   courseId: string,
   questionId: string,
 ): Promise<ActionResult> {
-  await requireSession("educator");
+  await requireTeam();
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase
@@ -146,6 +146,6 @@ export async function deleteExamQuestion(
     .eq("id", questionId);
 
   if (error) return { error: error.message };
-  revalidatePath(`/educator/exam/${courseId}`);
+  revalidatePath(`/courses/${courseId}/exam`);
   return { ok: true };
 }

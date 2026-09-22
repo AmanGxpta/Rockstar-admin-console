@@ -73,7 +73,7 @@ export default async function AdminDashboard() {
         </Card>
 
         <Card>
-          <SectionH>Where students enrol</SectionH>
+          <SectionH>Where students enroll</SectionH>
           {mix.length === 0 ? (
             <Empty title="Nothing to compare yet" />
           ) : (
@@ -103,7 +103,7 @@ export default async function AdminDashboard() {
         <Card>
           <SectionH>Access granted</SectionH>
           <Figure value={totals.entitlements} label="Active entitlements" />
-          <Figure value={totals.educators} label="Educators" muted />
+          <Figure value={totals.authors} label="Course authors" muted />
         </Card>
         <Card>
           <SectionH>Certificates</SectionH>
