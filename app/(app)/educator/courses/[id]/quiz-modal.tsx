@@ -109,13 +109,13 @@ export function QuestionEditor({
                 fontWeight: 700,
                 background: on ? "var(--red-faint)" : "var(--dark)",
                 color: on ? "var(--red-hover)" : "var(--text-secondary)",
-                boxShadow: on ? "inset 0 0 0 1.5px var(--red)" : FIELD_SHADOW,
+                boxShadow: on ? "inset 0 0 0 1.5px var(--red-hover)" : FIELD_SHADOW,
               }}
             >
               <Icon
                 name={t.icon}
                 size={14}
-                c={on ? "var(--red)" : "var(--text-muted)"}
+                c={on ? "var(--red-on)" : "var(--text-muted)"}
               />
               {t.label}
             </button>
@@ -284,7 +284,7 @@ export function QuestionEditor({
                 fontSize: 14,
                 fontWeight: 600,
                 color:
-                  !isOrder && c.isCorrect ? "#3e6b4a" : "var(--text-primary)",
+                  !isOrder && c.isCorrect ? "var(--leaf-on)" : "var(--text-primary)",
               }}
             />
 
@@ -318,14 +318,14 @@ export function QuestionEditor({
             borderRadius: 12,
             border: "1.5px dashed var(--border-mid)",
             background: "transparent",
-            color: "var(--red)",
+            color: "var(--red-on)",
             fontFamily: "var(--font-body)",
             fontWeight: 700,
             fontSize: 13.5,
             cursor: "pointer",
           }}
         >
-          <Icon name="plus" size={17} c="var(--red)" />
+          <Icon name="plus" size={17} c="var(--red-on)" />
           {isOrder ? "Add step" : "Add option"}
         </button>
       </div>
@@ -491,7 +491,7 @@ export function QuizModal({
                 justifyContent: "center",
               }}
             >
-              <Icon name="zap" size={19} c="var(--red)" />
+              <Icon name="zap" size={19} c="var(--red-on)" />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <input
@@ -582,7 +582,7 @@ export function QuizModal({
                     color: on ? "var(--red-hover)" : "var(--text-secondary)",
                     background: on ? "var(--red-faint)" : "transparent",
                     borderBottom: on
-                      ? "2px solid var(--red)"
+                      ? "2px solid var(--red-hover)"
                       : "2px solid transparent",
                   }}
                 >
@@ -615,7 +615,7 @@ export function QuizModal({
                 border: "none",
                 background: "none",
                 cursor: "pointer",
-                color: "var(--red)",
+                color: "var(--red-on)",
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
@@ -624,7 +624,7 @@ export function QuizModal({
                 fontWeight: 700,
               }}
             >
-              <Icon name="plus" size={15} c="var(--red)" />
+              <Icon name="plus" size={15} c="var(--red-on)" />
               Add
             </button>
 
@@ -648,14 +648,14 @@ export function QuizModal({
                 background: tab === "settings" ? "var(--red-faint)" : "transparent",
                 borderBottom:
                   tab === "settings"
-                    ? "2px solid var(--red)"
+                    ? "2px solid var(--red-hover)"
                     : "2px solid transparent",
               }}
             >
               <Icon
                 name="gear"
                 size={15}
-                c={tab === "settings" ? "var(--red)" : "var(--text-muted)"}
+                c={tab === "settings" ? "var(--red-on)" : "var(--text-muted)"}
               />
               Settings
             </button>

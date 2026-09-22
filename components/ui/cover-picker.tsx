@@ -89,14 +89,14 @@ function OverlayButton({
         // the chrome carries its own contrast rather than borrowing the theme's.
         background: "rgba(14,12,12,0.72)",
         backdropFilter: "blur(6px)",
-        color: danger ? "#FF9A93" : "#fff",
+        color: danger ? "var(--danger-on)" : "#fff",
         cursor: "pointer",
         fontFamily: "var(--font-body)",
         fontSize: 12,
         fontWeight: 700,
       }}
     >
-      <Icon name={icon} size={14} c={danger ? "#FF9A93" : "#fff"} />
+      <Icon name={icon} size={14} c={danger ? "var(--danger-on)" : "#fff"} />
       {label}
     </button>
   );
@@ -146,7 +146,7 @@ function CoverFrame({
         aspectRatio: RATIO,
         borderRadius: 14,
         overflow: "hidden",
-        border: `2px dashed ${over ? "var(--red)" : src ? "transparent" : "var(--border-mid)"}`,
+        border: `2px dashed ${over ? "var(--red-hover)" : src ? "transparent" : "var(--border-mid)"}`,
         transition: "border-color .15s ease",
       }}
     >

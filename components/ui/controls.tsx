@@ -125,7 +125,7 @@ export function Toggle({
           borderRadius: 999,
           background: "#fff",
           transition: "left 0.16s",
-          boxShadow: "0 1px 3px rgba(74,46,30,0.25)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.5)",
         }}
       />
     </button>
@@ -235,7 +235,7 @@ export function Toast({ message }: { message: string | null }) {
         transform: "translateX(-50%)",
         zIndex: 50,
         background: "var(--ink)",
-        color: "#fff",
+        color: "var(--paper)",
         padding: "11px 18px",
         borderRadius: 999,
         fontSize: 13.5,

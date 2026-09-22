@@ -33,7 +33,7 @@ function NavRow({ item, active }: { item: NavItem; active: boolean }) {
       <Icon
         name={item.icon}
         size={17}
-        c={active ? "var(--red)" : "var(--text-muted)"}
+        c={active ? "var(--red-on)" : "var(--text-muted)"}
         sw={active ? 2 : 1.8}
       />
       <span style={{ flex: 1 }}>{item.label}</span>

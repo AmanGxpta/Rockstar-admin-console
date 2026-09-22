@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
+import { DM_Sans, Playfair_Display, Raleway } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
-const display = Bricolage_Grotesque({
+// Editorial headlines and module titles.
+const display = Playfair_Display({
   variable: "--font-display",
   subsets: ["latin"],
 });
 
-const ui = Hanken_Grotesk({
+// Body and interface — labels, copy, inputs.
+const ui = DM_Sans({
   variable: "--font-ui",
+  subsets: ["latin"],
+});
+
+// The wordmark, navigation and uppercase eyebrows.
+const word = Raleway({
+  variable: "--font-word-face",
   subsets: ["latin"],
 });
 
@@ -25,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${display.variable} ${ui.variable} h-full`}>
+      <html lang="en" className={`${display.variable} ${ui.variable} ${word.variable} h-full`}>
         {/*
           Browser extensions edit <body> before React hydrates — a video-speed
           controller adds `vsc-initialized`, ad blockers and dark-mode tools add

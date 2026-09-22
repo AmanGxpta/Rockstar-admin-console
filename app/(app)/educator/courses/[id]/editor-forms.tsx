@@ -218,7 +218,7 @@ export function ClipForm({
                   background: "none",
                   padding: 0,
                   cursor: "pointer",
-                  color: "var(--red)",
+                  color: "var(--red-on)",
                   fontFamily: "var(--font-body)",
                   fontSize: 12,
                   fontWeight: 700,

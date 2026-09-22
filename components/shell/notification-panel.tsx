@@ -13,7 +13,7 @@ import type { Role } from "@/lib/session";
 const KIND = {
   feedback: { label: "Feedback", color: "var(--berry)" },
   announcement: { label: "Update", color: "var(--gold)" },
-  review: { label: "Course review", color: "var(--red)" },
+  review: { label: "Course review", color: "var(--red-on)" },
 } as const;
 
 export function NotificationPanel({
@@ -185,7 +185,7 @@ export function NotificationPanel({
                     border: 0,
                     padding: "5px 0",
                     background: "transparent",
-                    color: "var(--red)",
+                    color: "var(--red-on)",
                     fontFamily: "var(--font-body)",
                     fontSize: 12,
                     fontWeight: 700,

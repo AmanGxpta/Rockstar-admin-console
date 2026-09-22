@@ -140,7 +140,7 @@ export function QuestionImagePicker({
           height: 176,
           borderRadius: 12,
           overflow: "hidden",
-          border: `2px dashed ${over ? "var(--red)" : shown ? "transparent" : "var(--border-mid)"}`,
+          border: `2px dashed ${over ? "var(--red-hover)" : shown ? "transparent" : "var(--border-mid)"}`,
           transition: "border-color .15s ease",
         }}
       >
@@ -248,14 +248,14 @@ function OverlayButton({
         border: "none",
         background: "rgba(14,12,12,0.72)",
         backdropFilter: "blur(6px)",
-        color: danger ? "#FF9A93" : "#fff",
+        color: danger ? "var(--danger-on)" : "#fff",
         cursor: "pointer",
         fontFamily: "var(--font-body)",
         fontSize: 12,
         fontWeight: 700,
       }}
     >
-      <Icon name={icon} size={14} c={danger ? "#FF9A93" : "#fff"} />
+      <Icon name={icon} size={14} c={danger ? "var(--danger-on)" : "#fff"} />
       {label}
     </button>
   );

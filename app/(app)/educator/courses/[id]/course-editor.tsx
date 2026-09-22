@@ -343,13 +343,13 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
-                    color: "var(--red)",
+                    color: "var(--red-on)",
                     fontFamily: "var(--font-body)",
                     fontSize: 12.5,
                     fontWeight: 700,
                   }}
                 >
-                  <Icon name="plus" size={17} c="var(--red)" />
+                  <Icon name="plus" size={17} c="var(--red-on)" />
                   Add
                 </button>
               }
@@ -586,7 +586,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                                     c={
                                       selected?.kind === "lesson" &&
                                       selected.id === item.lesson.id
-                                        ? "var(--red)"
+                                        ? "var(--red-on)"
                                         : "var(--text-muted)"
                                     }
                                   />
@@ -614,7 +614,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                         onClick={() => addClip(m)}
                         style={addInChapterStyle}
                       >
-                        <Icon name="plus" size={15} c="var(--red)" />
+                        <Icon name="plus" size={15} c="var(--red-on)" />
                         Add clip to this chapter
                       </button>
 
@@ -623,7 +623,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                         onClick={() => startNewQuiz(m)}
                         style={addInChapterStyle}
                       >
-                        <Icon name="plus" size={15} c="var(--red)" />
+                        <Icon name="plus" size={15} c="var(--red-on)" />
                         Add quiz to this chapter
                       </button>
                     </div>
@@ -727,7 +727,7 @@ const addInChapterStyle = {
   fontFamily: "var(--font-body)",
   fontSize: 12.5,
   fontWeight: 700,
-  color: "var(--red)",
+  color: "var(--red-on)",
 } as const;
 
 const ellipsis = {
@@ -1028,7 +1028,7 @@ function ChapterRow({
             fontFamily: "var(--font-head)",
             fontWeight: 800,
             fontSize: 13,
-            color: "var(--red)",
+            color: "var(--red-on)",
           }}
         >
           {String(chapter.position).padStart(2, "0")}
@@ -1078,7 +1078,7 @@ function ChapterRow({
             margin: 2,
             borderRadius: 999,
             border: "2px solid var(--border-strong)",
-            borderTopColor: "var(--red)",
+            borderTopColor: "var(--red-hover)",
             display: "inline-block",
             flexShrink: 0,
           }}
@@ -1113,7 +1113,7 @@ function ChapterRow({
           <Icon
             name={renaming ? "check2" : "pencil"}
             size={14}
-            c={renaming || hover ? "var(--red)" : "var(--text-muted)"}
+            c={renaming || hover ? "var(--red-on)" : "var(--text-muted)"}
           />
         </button>
       )}
@@ -1154,17 +1154,17 @@ function QuizRow({
           cursor: "pointer",
           background: active ? "var(--red-faint)" : "var(--warn-bg)",
           border: "1.5px dashed",
-          borderColor: active ? "var(--red)" : "#e3c88f",
+          borderColor: active ? "var(--red-hover)" : "var(--gold)",
         }}
       >
-        <Icon name="zap" size={14} c={active ? "var(--red)" : "#b07e2a"} />
+        <Icon name="zap" size={14} c={active ? "var(--red-on)" : "var(--gold-on)"} />
         <span
           style={{
             ...ellipsis,
             minWidth: 0,
             fontSize: 12.5,
             fontWeight: 700,
-            color: "#8a6318",
+            color: "var(--gold-on)",
           }}
         >
           {quiz.title || "Untitled quiz"}
@@ -1173,7 +1173,7 @@ function QuizRow({
           style={{
             fontSize: 10.5,
             fontWeight: 800,
-            color: "#b07e2a",
+            color: "var(--gold-on)",
             letterSpacing: "0.04em",
           }}
         >
@@ -1194,7 +1194,7 @@ function QuizRow({
             cursor: "pointer",
           }}
         >
-          <Icon name="dots" size={14} c="#b07e2a" />
+          <Icon name="dots" size={14} c="var(--gold-on)" />
         </button>
       </div>
 
@@ -1299,7 +1299,7 @@ function QuizDetail({
               justifyContent: "center",
             }}
           >
-            <Icon name="zap" size={21} c="#b07e2a" />
+            <Icon name="zap" size={21} c="var(--gold-on)" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div

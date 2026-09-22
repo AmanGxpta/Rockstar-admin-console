@@ -100,11 +100,11 @@ export function Avatar({
 export type TagTone = "clay" | "gold" | "leaf" | "rose" | "berry" | "ink";
 
 const TAG_TONES: Record<TagTone, [bg: string, fg: string]> = {
-  clay: ["var(--clay-tint)", "var(--clay-deep)"],
-  gold: ["var(--gold-tint)", "#9a6e22"],
-  leaf: ["var(--leaf-tint)", "#3e6b4a"],
-  rose: ["var(--rose-tint)", "#b45561"],
-  berry: ["var(--berry-tint)", "#7a4460"],
+  clay: ["var(--clay-tint)", "var(--clay-on)"],
+  gold: ["var(--gold-tint)", "var(--gold-on)"],
+  leaf: ["var(--leaf-tint)", "var(--leaf-on)"],
+  rose: ["var(--rose-tint)", "var(--rose-on)"],
+  berry: ["var(--berry-tint)", "var(--berry-on)"],
   ink: ["var(--paper-2)", "var(--ink-2)"],
 };
 
@@ -196,13 +196,13 @@ export function Ph({
           flexDirection: "column",
           alignItems: "center",
           gap: 8,
-          color: dark ? "rgba(255,255,255,0.85)" : "var(--clay-deep)",
+          color: dark ? "rgba(255,255,255,0.85)" : "var(--clay-on)",
         }}
       >
         <Icon
           name={icon}
           size={26}
-          c={dark ? "rgba(255,255,255,0.8)" : "var(--clay)"}
+          c={dark ? "rgba(255,255,255,0.8)" : "var(--clay-deep)"}
           sw={1.6}
         />
         {label && (
@@ -253,7 +253,7 @@ export function Label({
 export function ProgressBar({
   value = 50,
   h = 3,
-  c = "var(--red)",
+  c = "var(--red-on)",
   track = "var(--dark-3)",
 }: {
   value?: number;
@@ -284,17 +284,17 @@ export function ProgressBar({
 }
 
 const BTN_KINDS = {
-  primary: { background: "var(--red)", color: "#fff" },
+  primary: { background: "var(--red)", color: "var(--cream)" },
   ghost: {
     background: "var(--dark-2)",
     color: "var(--text-primary)",
     boxShadow: "inset 0 0 0 1.5px var(--border-mid)",
   },
-  soft: { background: "var(--red-faint)", color: "var(--red-hover)" },
+  soft: { background: "var(--red-faint)", color: "var(--red-on)" },
   /** Not a pill — a bare inline control, used for destructive row actions. */
   text: {
     background: "transparent",
-    color: "var(--red)",
+    color: "var(--red-on)",
     height: "auto",
     padding: "4px 2px",
   },

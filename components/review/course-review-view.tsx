@@ -254,7 +254,7 @@ function Question({
                       ? "var(--leaf-tint)"
                       : "var(--dark-3)",
                     color: choice.is_correct
-                      ? "#3e6b4a"
+                      ? "var(--leaf-on)"
                       : "var(--text-secondary)",
                     border: "0.5px solid var(--border)",
                   }}
@@ -272,7 +272,7 @@ function Question({
                     <Icon
                       name={choice.is_correct ? "check" : "x"}
                       size={13}
-                      c={choice.is_correct ? "#3e6b4a" : "var(--text-muted)"}
+                      c={choice.is_correct ? "var(--leaf-on)" : "var(--text-muted)"}
                     />
                   )}
                   {choice.body.trim() || "— blank —"}

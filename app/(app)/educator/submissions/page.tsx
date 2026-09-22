@@ -204,7 +204,7 @@ function QueueCard({ submission: s }: { submission: SubmissionSummary }) {
               <span
                 style={{
                   marginLeft: "auto",
-                  color: "var(--red)",
+                  color: "var(--red-on)",
                   fontWeight: 700,
                   display: "inline-flex",
                   alignItems: "center",
@@ -212,7 +212,7 @@ function QueueCard({ submission: s }: { submission: SubmissionSummary }) {
                 }}
               >
                 {s.status === "pending" ? "Review" : "Open"}
-                <Icon name="chevR" size={14} c="var(--red)" />
+                <Icon name="chevR" size={14} c="var(--red-on)" />
               </span>
             </div>
           </div>

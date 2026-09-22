@@ -25,7 +25,7 @@ const BOX: React.CSSProperties = {
   aspectRatio: "9/16",
   borderRadius: 14,
   overflow: "hidden",
-  background: "var(--ink, #14110f)",
+  background: "var(--paper)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -232,12 +232,12 @@ export function ClipPreview({
               alignItems: "center",
               gap: 5,
               marginTop: 4,
-              color: "var(--red)",
+              color: "var(--red-on)",
               fontWeight: 700,
               textDecoration: "none",
             }}
           >
-            <Icon name="eye" size={12} c="var(--red)" />
+            <Icon name="eye" size={12} c="var(--red-on)" />
             Open full size
           </a>
         )}

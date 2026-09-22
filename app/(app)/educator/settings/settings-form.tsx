@@ -40,7 +40,7 @@ function Switch({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--red)" }}
+        style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--red-hover)" }}
       />
       <span style={{ flex: 1 }}>
         <span
@@ -163,7 +163,7 @@ export function SettingsForm({
               marginTop: 16,
               fontSize: 13,
               color:
-                "error" in result ? "var(--red)" : "var(--text-secondary)",
+                "error" in result ? "var(--red-on)" : "var(--text-secondary)",
             }}
           >
             {"error" in result ? result.error : "Saved."}

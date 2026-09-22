@@ -194,7 +194,7 @@ export function CourseForm() {
       {error && (
         <p
           style={{
-            color: "var(--red)",
+            color: "var(--red-on)",
             fontFamily: "var(--font-body)",
             fontSize: 13,
             marginBottom: 16,

@@ -9,7 +9,7 @@
 export function Bars({
   data,
   h = 150,
-  c = "var(--red)",
+  c = "var(--red-on)",
   labels,
 }: {
   data: number[];
@@ -69,7 +69,7 @@ export function Area({
   data,
   w = 520,
   h = 140,
-  c = "var(--red)",
+  c = "var(--red-on)",
 }: {
   id: string;
   data: number[];

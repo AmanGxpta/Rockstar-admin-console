@@ -387,7 +387,7 @@ export function ExamBuilder({
               }}
             >
               <Icon name="award" size={18} c="var(--warn)" />
-              <div style={{ fontSize: 12, color: "#9a6e22", lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: "var(--gold-on)", lineHeight: 1.4 }}>
                 Grading runs inside the database, so the answer key never
                 reaches the student&apos;s device.
               </div>

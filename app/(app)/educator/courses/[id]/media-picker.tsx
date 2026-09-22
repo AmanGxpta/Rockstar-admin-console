@@ -83,7 +83,7 @@ export function MediaPickerButton(props: Props & { label?: string }) {
           whiteSpace: "nowrap",
         }}
       >
-        <Icon name="upload" size={15} c={busy ? "var(--text-muted)" : "var(--red)"} />
+        <Icon name="upload" size={15} c={busy ? "var(--text-muted)" : "var(--red-on)"} />
         {busy ? "Uploading…" : (props.label ?? "Upload")}
       </button>
       {error && (
@@ -153,7 +153,7 @@ export function MediaDropZone(props: Props & { hint?: string }) {
           textAlign: "left",
           padding: 20,
           borderRadius: "var(--r-lg, 16px)",
-          border: `2px dashed ${over ? "var(--red)" : "var(--border-mid)"}`,
+          border: `2px dashed ${over ? "var(--red-hover)" : "var(--border-mid)"}`,
           background: over ? "var(--red-faint)" : "transparent",
           cursor: busy ? "default" : "pointer",
           fontFamily: "var(--font-body)",
@@ -172,7 +172,7 @@ export function MediaDropZone(props: Props & { hint?: string }) {
             flexShrink: 0,
           }}
         >
-          <Icon name="upload" size={20} c="var(--red)" />
+          <Icon name="upload" size={20} c="var(--red-on)" />
         </span>
         <span>
           <span

@@ -448,7 +448,7 @@ export function MessagesView({
                 style={{
                   padding: "10px 20px",
                   fontSize: 12,
-                  color: "var(--red)",
+                  color: "var(--red-on)",
                   borderTop: "0.5px solid var(--border)",
                 }}
               >
@@ -520,7 +520,7 @@ export function MessagesView({
             </>
           )}
           {composeError ? (
-            <div style={{ fontSize: 12, color: "var(--red)" }}>{composeError}</div>
+            <div style={{ fontSize: 12, color: "var(--red-on)" }}>{composeError}</div>
           ) : null}
         </div>
       </Modal>

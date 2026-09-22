@@ -175,7 +175,7 @@ export function ProfileForm({ account }: { account: EducatorAccount }) {
             background: "error" in result ? "var(--red-faint)" : "var(--dark-2)",
             border: "0.5px solid var(--border)",
             color:
-              "error" in result ? "var(--red)" : "var(--text-secondary)",
+              "error" in result ? "var(--red-on)" : "var(--text-secondary)",
           }}
         >
           {"error" in result ? (

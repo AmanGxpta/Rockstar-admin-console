@@ -2,51 +2,63 @@
 
 /* Rockstar Studio design system tokens and base styles.
    Micro-learning for hairdressers and artists.
-   Clean and friendly, light-first, warm beauty tones: clay, rose, gold.
 
-   Several token names below (dark, red, cream, text and border families)
-   are shared with the white-label build on the stripped branch: every
-   component under components/ui and components/shell reads through those
-   same names, so the two brands run identical component code and diverge
-   only in this file's values. A token named "dark" holding a light paper
-   color is an odd fit for this brand; that is the price of keeping this
-   file the only one that differs between branches on merge. Worth a
-   neutral rename on both branches together at some point, not attempted
-   here to keep this change scoped to one file.
+   Editorial black & red, matched to the mobile Figma ("Rockstar — Mobile
+   (Stripped)"): deep charcoal surfaces, a single signature red for action,
+   warm cream text, and the Raleway / Playfair / DM Sans type system. The two
+   products now read as one.
 
-   Fonts come from next/font in app/layout.tsx, which supplies the display
-   font (Bricolage Grotesque) and the ui font (Hanken Grotesk). This brand
-   only has two font families, so the word and body font roles below both
-   alias the ui font, and the head role aliases the display font. */
+   The token names below (dark, red, cream, text and border families) are the
+   shared contract: every component under components/ui and components/shell
+   reads through those names, so this file stays the only one that carries a
+   brand. The warm-neutral names above them (paper, ink, clay …) are kept as
+   the source-of-truth layer and simply hold charcoals now — a token named
+   "paper" holding #111 is an odd fit, but renaming it would touch every file
+   this system was built to keep out of the theme.
+
+   Fonts come from next/font in app/layout.tsx: the display font (Playfair
+   Display), the ui font (DM Sans) and the word font (Raleway). Unlike the
+   previous two-family brand, the word role is now its own face — it is what
+   the wordmark, sidebar nav and uppercase eyebrows are set in. */
 
 :root {
-  /* warm neutrals (source of truth for this brand's palette) */
-  --paper: #fbf7f3;
-  --paper-2: #f4ece4;
-  --surface: #ffffff;
-  --ink: #2a211c;
-  --ink-2: #7c6c61;
-  --ink-3: #ac9c90;
-  --line: #ede3d9;
-  --line-2: #e3d6c9;
+  /* charcoals (source of truth for this brand's palette) */
+  --paper: #111111; /* Dark — page base */
+  --paper-2: #252525; /* Well — nested elements, hover */
+  --surface: #1c1c1c; /* Surface — cards, panels */
+  --ink: #f0ede8; /* Cream — primary text */
+  --ink-2: #b8b4ae; /* Muted — body text */
+  --ink-3: #777370; /* timestamps, placeholders */
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.14);
 
-  --clay: #c75c3c;
-  --clay-deep: #a8452a;
-  --clay-muted: #8a3a26;
-  --clay-tint: #f8e7df;
-  --rose: #e2858a;
-  --rose-tint: #fbe7e7;
-  --gold: #cf9a47;
-  --gold-tint: #f6ead2;
-  --leaf: #5e8c6a;
-  --leaf-tint: #e4efe5;
-  --berry: #9a5b7a;
-  --berry-tint: #f3e6ee;
+  --clay: #8c1a1a; /* Red — CTAs, accent */
+  --clay-deep: #a82020; /* Red Hover — the red brightens, never darkens */
+  --clay-muted: #6d1414;
+  --clay-tint: rgba(140, 26, 26, 0.22);
+  --rose: #c2453f;
+  --rose-tint: rgba(194, 69, 63, 0.2);
+  --gold: #c99a5c;
+  --gold-tint: rgba(201, 154, 92, 0.16);
+  --leaf: #3e8f5a;
+  --leaf-tint: rgba(34, 85, 44, 0.3);
+  --berry: #8e3b52;
+  --berry-tint: rgba(142, 59, 82, 0.22);
   --danger-red: #c94444;
-  --danger-red-tint: #f8e3e3;
+  --danger-red-tint: rgba(201, 68, 68, 0.2);
 
-  --display: var(--font-display), system-ui, sans-serif;
+  /* Type set ON a tint. On charcoal the readable partner of an accent is a
+     lightened one, the opposite of what the light brand needed. */
+  --clay-on: #e06060;
+  --gold-on: #e0b878;
+  --leaf-on: #7ec99a;
+  --rose-on: #e68a85;
+  --berry-on: #db8aa3;
+  --danger-on: #f08a8a;
+
+  --display: var(--font-display), Georgia, serif;
   --ui: var(--font-ui), system-ui, sans-serif;
+  --word: var(--font-word-face), var(--font-ui), system-ui, sans-serif;
 
   /* shared contract components/ui and components/shell read through */
   --dark: var(--paper); /* page background */
@@ -54,22 +66,29 @@
   --dark-3: var(--paper-2); /* nested elements, wells, hover */
   --dark-4: var(--line-2); /* deeper hover */
 
+  /* `--red` is the FILL: buttons, bubbles, the active nav plate. It is the
+     Figma's #8C1A1A, which is deliberately dark — it is meant to be sat on,
+     not read. `--red-on` is the same accent lightened until it can be set as
+     12px type over #111, and is what every icon, link and label uses.
+     `--red-hover` sits between them and draws the edges: focus rings, active
+     borders, drop targets. */
   --red: var(--clay);
   --red-hover: var(--clay-deep);
+  --red-on: var(--clay-on);
   --red-muted: var(--clay-muted);
   --red-faint: var(--clay-tint);
 
-  --cream: var(--paper-2);
-  --cream-2: var(--line);
-  --cream-3: var(--line-2);
+  --cream: var(--ink);
+  --cream-2: var(--ink-2);
+  --cream-3: var(--paper-2);
 
   --text-primary: var(--ink);
   --text-secondary: var(--ink-2);
   --text-muted: var(--ink-3);
 
-  --border: rgba(42, 33, 28, 0.08);
-  --border-mid: rgba(42, 33, 28, 0.14);
-  --border-strong: rgba(42, 33, 28, 0.24);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-mid: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.26);
 
   --success: var(--leaf);
   --success-bg: var(--leaf-tint);
@@ -78,21 +97,22 @@
   --warn: var(--gold);
   --warn-bg: var(--gold-tint);
 
-  --font-word: var(--ui);
+  --font-word: var(--word);
   --font-head: var(--display);
   --font-body: var(--ui);
 
-  /* radii — friendlier / rounder than the white-label build, on purpose */
-  --r-sm: 12px;
-  --r-md: 16px;
-  --r-card: 24px;
+  /* radii — the Figma's: 14 on a card, pills at 999 */
+  --r-sm: 10px;
+  --r-md: 12px;
+  --r-card: 14px;
 
-  /* shadows — warm. Card elevation, dropdown menus and the quiz modal read
-     through these. The white-label build's style guide forbids shadows, so on
-     the stripped branch these three resolve to `none`. */
-  --sh-1: 0 1px 2px rgba(74, 46, 30, 0.05), 0 2px 8px rgba(74, 46, 30, 0.05);
-  --sh-2: 0 6px 18px rgba(74, 46, 30, 0.08), 0 2px 6px rgba(74, 46, 30, 0.05);
-  --sh-3: 0 18px 40px rgba(74, 46, 30, 0.14), 0 6px 14px rgba(74, 46, 30, 0.08);
+  /* shadows. A warm shadow under a #1c1c1c card on a #111 page is invisible —
+     the step between the two surfaces is what separates them — so sh-1 is
+     dropped entirely and only the pieces that genuinely float (menus, the quiz
+     modal) keep a black one. */
+  --sh-1: none;
+  --sh-2: 0 6px 18px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --sh-3: 0 18px 40px rgba(0, 0, 0, 0.55), 0 6px 14px rgba(0, 0, 0, 0.4);
 }
 
 @theme inline {
@@ -109,6 +129,13 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Tells the browser to paint its own chrome — scrollbars, form controls, the
+   caret, autofill — dark. Without it a <select> or a date input arrives as a
+   white slab in the middle of a charcoal panel. */
+:root {
+  color-scheme: dark;
 }
 
 html,
@@ -156,7 +183,7 @@ body {
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--clay-on);
 }
 
 .rs-label {
@@ -172,12 +199,7 @@ body {
 .rs-ph {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    var(--rose-tint),
-    var(--clay-tint) 55%,
-    var(--gold-tint)
-  );
+  background: linear-gradient(135deg, #241416, #1c1214 55%, #171315);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -190,12 +212,12 @@ body {
   background:
     radial-gradient(
       120px 120px at 78% 22%,
-      rgba(255, 255, 255, 0.45),
+      rgba(168, 32, 32, 0.35),
       transparent 60%
     ),
     repeating-linear-gradient(
       45deg,
-      rgba(255, 255, 255, 0.05) 0 12px,
+      rgba(255, 255, 255, 0.03) 0 12px,
       transparent 12px 24px
     );
   mix-blend-mode: screen;
@@ -207,7 +229,7 @@ body {
 }
 
 .rs-ph-dark {
-  background: linear-gradient(160deg, #3a2a24, #5a3a2e 60%, #7a4a38);
+  background: linear-gradient(160deg, #1a0e10, #140c0d 60%, #0e0a0b);
 }
 
 /* hidden scrollbars inside app panes */
@@ -270,11 +292,11 @@ body {
 }
 
 .rs-btn-soft:hover {
-  background: var(--cream-3);
+  background: var(--paper-2);
 }
 
 .rs-input:focus-within {
-  border-color: var(--red) !important;
+  border-color: var(--red-hover) !important;
 }
 
 /* login */

@@ -89,7 +89,7 @@ export default async function AdminCertifications() {
           <SectionH
             action={
               <span
-                style={{ fontSize: 12.5, fontWeight: 700, color: "var(--red)" }}
+                style={{ fontSize: 12.5, fontWeight: 700, color: "var(--red-on)" }}
               >
                 Last {trend.labels.length} months
               </span>
@@ -173,7 +173,7 @@ export default async function AdminCertifications() {
                   style={{
                     fontFamily: "var(--font-head)",
                     fontWeight: 700,
-                    color: "var(--red)",
+                    color: "var(--red-on)",
                   }}
                 >
                   {c.reference}

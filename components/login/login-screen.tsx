@@ -97,7 +97,7 @@ function LeftPanel() {
                 border: "none",
                 cursor: "pointer",
                 padding: 0,
-                background: n === i ? "var(--red)" : "var(--border-strong)",
+                background: n === i ? "var(--red-hover)" : "var(--border-strong)",
                 transition: "width 0.3s ease, background 0.3s ease",
               }}
             />
@@ -172,7 +172,7 @@ function Input({
           alignItems: "center",
           gap: 10,
           padding: "0 14px",
-          border: `0.5px solid ${focus ? "var(--red)" : "var(--border-mid)"}`,
+          border: `0.5px solid ${focus ? "var(--red-hover)" : "var(--border-mid)"}`,
           transition: "border-color 0.18s ease",
         }}
       >
@@ -180,7 +180,7 @@ function Input({
           <Icon
             name={icon}
             size={16}
-            c={focus ? "var(--red)" : "var(--text-muted)"}
+            c={focus ? "var(--red-on)" : "var(--text-muted)"}
           />
         )}
         <input
@@ -601,7 +601,7 @@ export function LoginScreen() {
                     <Icon
                       name="eye"
                       size={16}
-                      c={show ? "var(--red)" : "var(--text-muted)"}
+                      c={show ? "var(--red-on)" : "var(--text-muted)"}
                     />
                   </button>
                 }
@@ -663,11 +663,11 @@ export function LoginScreen() {
                 fontSize: 10.5,
                 fontWeight: 200,
                 letterSpacing: "0.1em",
-                color: "var(--red)",
+                color: "var(--red-on)",
               }}
             >
               {mode !== "signin" && (
-                <Icon name="arrowL" size={13} c="var(--red)" />
+                <Icon name="arrowL" size={13} c="var(--red-on)" />
               )}
               {mode === "signin" ? "Forgot password?" : "Back to sign in"}
             </button>

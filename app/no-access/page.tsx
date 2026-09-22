@@ -50,7 +50,7 @@ export default async function NoAccessPage() {
             margin: "0 auto 24px",
           }}
         >
-          <Icon name="lock" size={24} c="var(--red)" />
+          <Icon name="lock" size={24} c="var(--red-on)" />
         </div>
 
         <h1 className="rs-head" style={{ margin: 0, fontSize: 26 }}>
