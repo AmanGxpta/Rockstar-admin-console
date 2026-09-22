@@ -290,6 +290,7 @@ export type Database = {
           conversation_id: string
           is_muted: boolean
           joined_at: string
+          last_pushed_at: string | null
           last_read_at: string
           unread_count: number
           user_id: string
@@ -298,6 +299,7 @@ export type Database = {
           conversation_id: string
           is_muted?: boolean
           joined_at?: string
+          last_pushed_at?: string | null
           last_read_at?: string
           unread_count?: number
           user_id: string
@@ -306,6 +308,7 @@ export type Database = {
           conversation_id?: string
           is_muted?: boolean
           joined_at?: string
+          last_pushed_at?: string | null
           last_read_at?: string
           unread_count?: number
           user_id?: string
@@ -1278,6 +1281,64 @@ export type Database = {
           },
         ]
       }
+      quiz_attempts: {
+        Row: {
+          completed_at: string
+          correct_count: number
+          course_id: string
+          id: string
+          passed: boolean
+          question_count: number
+          quiz_id: string
+          score_percent: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          correct_count: number
+          course_id: string
+          id?: string
+          passed: boolean
+          question_count: number
+          quiz_id: string
+          score_percent: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          correct_count?: number
+          course_id?: string
+          id?: string
+          passed?: boolean
+          question_count?: number
+          quiz_id?: string
+          score_percent?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_choices: {
         Row: {
           body: string
@@ -1388,6 +1449,7 @@ export type Database = {
           gates_progress: boolean
           id: string
           module_id: string
+          pass_percent: number
           position: number
           show_results: boolean
           title: string
@@ -1399,6 +1461,7 @@ export type Database = {
           gates_progress?: boolean
           id?: string
           module_id: string
+          pass_percent?: number
           position: number
           show_results?: boolean
           title?: string
@@ -1410,6 +1473,7 @@ export type Database = {
           gates_progress?: boolean
           id?: string
           module_id?: string
+          pass_percent?: number
           position?: number
           show_results?: boolean
           title?: string
@@ -1694,6 +1758,14 @@ export type Database = {
         Args: { p_is_lesson: boolean; p_position: number }
         Returns: number
       }
+      claim_chat_push: {
+        Args: { p_message: string; p_window?: string }
+        Returns: {
+          body: string
+          title: string
+          user_id: string
+        }[]
+      }
       community_post_id_from_object_path: {
         Args: { p_name: string }
         Returns: string
@@ -1796,6 +1868,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      preview_text: {
+        Args: { p_body: string; p_limit?: number }
+        Returns: string
+      }
       register_push_token: {
         Args: { p_platform: string; p_token: string }
         Returns: undefined
@@ -1840,6 +1916,26 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "exam_attempts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_quiz: {
+        Args: { p_answers: Json; p_quiz_id: string }
+        Returns: {
+          completed_at: string
+          correct_count: number
+          course_id: string
+          id: string
+          passed: boolean
+          question_count: number
+          quiz_id: string
+          score_percent: number
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quiz_attempts"
           isOneToOne: true
           isSetofReturn: false
         }
