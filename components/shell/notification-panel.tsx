@@ -235,7 +235,7 @@ export function NotificationPanel({
                   >
                     {role === "educator"
                       ? "Course decisions and other updates will appear here."
-                      : "Access requests and other updates will appear here."}
+                      : "Enrollment requests and other updates will appear here."}
                   </div>
                 </div>
               ) : (

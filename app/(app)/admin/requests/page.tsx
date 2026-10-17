@@ -21,7 +21,7 @@ export default async function AccessRequests() {
   return (
     <WebShell
       session={session}
-      title="Access requests"
+      title="Enrollment requests"
       sub={
         pending === 0
           ? "Nobody is waiting"

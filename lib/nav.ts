@@ -63,7 +63,7 @@ export const NAV: NavGroup[] = [
     roles: ["admin"],
     items: [
       {
-        label: "Access requests",
+        label: "Enrollment requests",
         icon: "lock",
         href: "/admin/requests",
         badgeKey: "accessRequests",

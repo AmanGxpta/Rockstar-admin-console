@@ -53,7 +53,7 @@ export function EnrolledStudents({
       {students.length === 0 ? (
         <Empty
           title="Nobody is on this course yet"
-          hint="Students ask for access from the app, and the team lets them in from Access requests."
+          hint="Students ask for access from the app, and the team lets them in from Enrollment requests."
         />
       ) : (
         <Table
