@@ -115,7 +115,7 @@ export function QuestionEditor({
                 fontSize: 12.5,
                 fontWeight: 700,
                 background: on ? "var(--red-faint)" : "var(--dark)",
-                color: on ? "var(--red-hover)" : "var(--text-secondary)",
+                color: on ? "var(--red-on)" : "var(--text-secondary)",
                 boxShadow: on
                   ? "inset 0 0 0 1.5px var(--red-hover)"
                   : FIELD_SHADOW,
@@ -261,7 +261,7 @@ export function QuestionEditor({
                   flexShrink: 0,
                   borderRadius: 8,
                   background: "var(--red-faint)",
-                  color: "var(--red-hover)",
+                  color: "var(--red-on)",
                   fontSize: 12,
                   fontWeight: 800,
                   display: "flex",
@@ -650,7 +650,7 @@ export function QuizModal({
                     fontFamily: "var(--font-body)",
                     fontSize: 12.5,
                     fontWeight: 700,
-                    color: on ? "var(--red-hover)" : "var(--text-secondary)",
+                    color: on ? "var(--red-on)" : "var(--text-secondary)",
                     background: on ? "var(--red-faint)" : "transparent",
                     borderBottom: on
                       ? "2px solid var(--red-hover)"
@@ -727,7 +727,7 @@ export function QuizModal({
                 fontWeight: 700,
                 color:
                   tab === "settings"
-                    ? "var(--red-hover)"
+                    ? "var(--red-on)"
                     : "var(--text-secondary)",
                 background:
                   tab === "settings" ? "var(--red-faint)" : "transparent",
@@ -803,14 +803,14 @@ export function QuizModal({
                     border: "none",
                     background: "none",
                     padding: 0,
-                    color: "var(--red-hover)",
+                    color: "var(--red-on)",
                     fontFamily: "var(--font-body)",
                     fontSize: 13.5,
                     fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
-                  <Icon name="trash" size={16} c="var(--red-hover)" />
+                  <Icon name="trash" size={16} c="var(--red-on)" />
                   Delete this quiz
                 </button>
               )}

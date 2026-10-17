@@ -170,9 +170,9 @@ export function Seg({
               fontFamily: "var(--font-body)",
               fontSize: 12.5,
               fontWeight: 700,
-              background: on ? "var(--dark-2)" : "transparent",
+              background: on ? "var(--red-faint)" : "transparent",
               color: on ? "var(--text-primary)" : "var(--text-secondary)",
-              boxShadow: on ? "var(--sh-1)" : "none",
+              boxShadow: on ? "inset 0 0 0 1.5px var(--red-hover)" : "none",
             }}
           >
             {o}

@@ -19,7 +19,7 @@ const DURATIONS: { value: GrantDuration; label: string }[] = [
 function Note({ text }: { text: string | null }) {
   if (!text) return null;
   return (
-    <div style={{ fontSize: 12.5, color: "var(--red-hover)", marginTop: 8 }}>
+    <div style={{ fontSize: 12.5, color: "var(--red-on)", marginTop: 8 }}>
       {text}
     </div>
   );
@@ -113,7 +113,7 @@ export function RevokeAccess({
           fontFamily: "var(--font-body)",
           fontSize: 12.5,
           fontWeight: 700,
-          color: error ? "var(--red-hover)" : "var(--text-muted)",
+          color: error ? "var(--red-on)" : "var(--text-muted)",
           opacity: busy ? 0.5 : 1,
         }}
       >

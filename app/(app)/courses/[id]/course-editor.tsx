@@ -1260,7 +1260,7 @@ function ChapterRow({
           <Icon
             name="trash"
             size={14}
-            c={hover ? "var(--red-hover)" : "var(--text-muted)"}
+            c={hover ? "var(--red-on)" : "var(--text-muted)"}
           />
         </button>
       )}
@@ -1358,7 +1358,7 @@ function ClipRow({
         <Icon
           name="trash"
           size={13}
-          c={hover ? "var(--red-hover)" : "var(--text-muted)"}
+          c={hover ? "var(--red-on)" : "var(--text-muted)"}
         />
       </button>
     </div>
@@ -1486,13 +1486,13 @@ function QuizRow({
                   borderRadius: 8,
                   fontSize: 13,
                   color:
-                    label === "Delete" ? "var(--red-hover)" : "var(--text-primary)",
+                    label === "Delete" ? "var(--red-on)" : "var(--text-primary)",
                 }}
               >
                 <Icon
                   name={icon}
                   size={15}
-                  c={label === "Delete" ? "var(--red-hover)" : "var(--text-muted)"}
+                  c={label === "Delete" ? "var(--red-on)" : "var(--text-muted)"}
                 />
                 {label}
               </button>
@@ -1684,10 +1684,11 @@ function QuizDetail({
             style={{
               width: 190,
               flexShrink: 0,
-              background: "var(--ink)",
+              background: "var(--dark)",
+              boxShadow: "inset 0 0 0 1.5px var(--border-mid)",
               borderRadius: 16,
               padding: 16,
-              color: "#fff",
+              color: "var(--text-primary)",
             }}
           >
             <div

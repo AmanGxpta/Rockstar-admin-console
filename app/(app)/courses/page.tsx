@@ -80,9 +80,14 @@ export default async function Courses({
                 fontSize: 13,
                 fontWeight: 700,
                 textDecoration: "none",
-                background: on ? "var(--ink)" : "var(--dark-2)",
-                color: on ? "#fff" : "var(--text-secondary)",
-                boxShadow: on ? "none" : "inset 0 0 0 1.5px var(--border-mid)",
+                // Selection is the ring and the brighter text, as on the
+                // request queue's term picker. A cream --ink fill under #fff
+                // text made the chosen filter the one you could not read.
+                background: "var(--dark-2)",
+                color: on ? "var(--text-primary)" : "var(--text-secondary)",
+                boxShadow: on
+                  ? "inset 0 0 0 1.5px var(--text-primary)"
+                  : "inset 0 0 0 1.5px var(--border-mid)",
               }}
             >
               {f.label}

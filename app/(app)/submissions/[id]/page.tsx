@@ -215,7 +215,7 @@ function Gallery({ media }: { media: SubmissionDetail["media"] }) {
               height: 200,
               objectFit: "cover",
               borderRadius: 14,
-              background: "var(--ink)",
+              background: "#000",
             }}
           />
         ) : (
