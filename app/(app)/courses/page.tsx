@@ -11,8 +11,8 @@ import { requireTeam } from "@/lib/session";
 /**
  * The design's fourth chip is "Archived". There is no archived state in the
  * schema, so the filter offers what exists rather than a tab that can never
- * fill — and since 0026 that includes "with an admin", which is the one an
- * educator actually wants: it answers "what am I waiting on?".
+ * fill. A "With an admin" chip (courses awaiting review, 0026) was removed at
+ * the team's request; a course in review still says so on its own card.
  *
  * The same list for both roles, because `courses` narrows itself: an admin's
  * policy returns every course, an educator's returns the ones they author.
@@ -24,7 +24,6 @@ import { requireTeam } from "@/lib/session";
 const FILTERS = [
   { value: "all", label: "All" },
   { value: "published", label: "Published" },
-  { value: "review", label: "With an admin" },
   { value: "drafts", label: "Drafts" },
 ] as const;
 
@@ -47,11 +46,9 @@ export default async function Courses({
   const courses = all.filter((c) =>
     active === "published"
       ? c.is_published
-      : active === "review"
-        ? awaitingReview(c.review_state)
-        : active === "drafts"
-          ? !c.is_published
-          : true,
+      : active === "drafts"
+        ? !c.is_published
+        : true,
   );
 
   return (
