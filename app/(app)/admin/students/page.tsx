@@ -2,7 +2,6 @@ import Link from "next/link";
 import { WebShell } from "@/components/shell";
 import {
   Avatar,
-  Badge,
   Card,
   Empty,
   KPI,
@@ -14,7 +13,6 @@ import { formatDay, listStudents } from "@/lib/reporting";
 
 const COLS: Col[] = [
   ["Student", 1.8],
-  ["Status", 0.8],
   ["Courses", 0.7, "right"],
   ["Certificates", 0.8, "right"],
   ["Joined", 0.9, "right"],
@@ -83,9 +81,6 @@ export default async function AdminStudents() {
                     <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)" }}>{s.email}</span>
                   </span>
                 </Link>,
-                <Badge key="st" tone={s.is_active ? "complete" : "locked"}>
-                  {s.is_active ? "Active" : "Deactivated"}
-                </Badge>,
                 s.enrollments,
                 s.certificates,
                 formatDay(s.created_at),
