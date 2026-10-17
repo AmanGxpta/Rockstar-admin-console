@@ -447,7 +447,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                 >
                   {(
                     [
-                      ["New clip", "video", () => {
+                      ["New content file", "video", () => {
                         const m = targetModule();
                         if (m) addClip(m);
                         else say("Add a chapter first.");
@@ -668,7 +668,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                         style={addInChapterStyle}
                       >
                         <Icon name="plus" size={15} c="var(--red-on)" />
-                        Add clip to this chapter
+                        Add content file to the chapter
                       </button>
 
                       <button
@@ -1771,7 +1771,7 @@ function ClipDetail({
   return (
     <Card>
       <SectionH action={<Tag tone="leaf">{chapterTitle}</Tag>}>
-        Editing clip
+        Editing content
       </SectionH>
       {/* Keyed on the clip so switching selection resets the fields — and the
           preview — to the clip you moved to, rather than carrying the last
