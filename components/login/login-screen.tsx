@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSignIn } from "@clerk/nextjs";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -11,16 +12,24 @@ const SLIDES = [
     kicker: "For educators",
     line: "Teach the techniques you wish you’d learned sooner.",
     body: "Build a course, grade real work, and watch your students level up — all from one studio.",
+    image: "/login/educator.jpg",
+    // Where the subject sits in the 16:9 frame, so the tall panel's crop
+    // keeps it in view.
+    focus: "52% 40%",
   },
   {
     kicker: "For studios",
     line: "Turn your best stylists into your best teachers.",
     body: "Certifications your whole team can trust, with progress you can actually measure.",
+    image: "/login/foils.jpg",
+    focus: "38% 50%",
   },
   {
     kicker: "For the craft",
     line: "Small lessons. Sharper hands. Every single day.",
     body: "Micro-learning built for the chair — five minutes between clients is all it takes.",
+    image: "/login/result.jpg",
+    focus: "42% 45%",
   },
 ];
 
@@ -39,7 +48,7 @@ function LeftPanel() {
         position: "relative",
         height: "100%",
         overflow: "hidden",
-        background: "var(--red-faint)",
+        background: "var(--dark)",
         borderRight: "0.5px solid var(--border)",
         display: "flex",
         flexDirection: "column",
@@ -48,6 +57,45 @@ function LeftPanel() {
     >
       <div style={{ position: "relative", zIndex: 1 }}>
         <RSLogo width={180} />
+      {/*
+        Stills from the Foil Basics course, one per slide. All three are
+        mounted and crossfaded on opacity rather than swapped, so a slide
+        change never waits on an image request. Only the first is preloaded.
+      */}
+      {SLIDES.map((slide, n) => (
+        <Image
+          key={slide.image}
+          src={slide.image}
+          alt=""
+          fill
+          sizes="52vw"
+          preload={n === 0}
+          style={{
+            objectFit: "cover",
+            objectPosition: slide.focus,
+            opacity: n === i ? 1 : 0,
+            transition: "opacity 0.9s ease",
+          }}
+        />
+      ))}
+      {/* The photographs are of a white studio, so the copy is set low and
+          given its own ground: the frame stays clear through the top half,
+          then darkens — through a trace of the brand red — to solid behind
+          the slide text and the quote. A light veil at the top lifts the
+          logo off the wall behind it. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            // Measured from the bottom in pixels, not percentages: the copy
+            // is anchored to the bottom edge, so the dark ground has to stay
+            // under it however tall the window is.
+            "linear-gradient(to top, #111 0px, rgba(17,17,17,0.97) 300px, rgba(17,17,17,0.86) 400px, rgba(45,8,8,0.55) 500px, rgba(17,17,17,0) 640px)," +
+            "linear-gradient(180deg, rgba(17,17,17,0.35) 0px, rgba(17,17,17,0) 160px)",
+        }}
+      />
       </div>
 
       <div
@@ -57,7 +105,8 @@ function LeftPanel() {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: "flex-end",
+          paddingBottom: 32,
           maxWidth: 440,
         }}
       >
