@@ -47,7 +47,7 @@ function LeftPanel() {
       }}
     >
       <div style={{ position: "relative", zIndex: 1 }}>
-        <RSLogo size={26} />
+        <RSLogo width={180} />
       </div>
 
       <div

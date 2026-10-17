@@ -109,7 +109,7 @@ export function Sidebar({
       }}
     >
       <div style={{ padding: "2px 8px 24px" }}>
-        <RSLogo size={24} />
+        <RSLogo width={150} />
       </div>
 
       <div style={{ flex: 1, overflowY: "auto" }} className="rs-noscroll">

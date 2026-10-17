@@ -34,7 +34,7 @@ export default async function NoAccessPage() {
             marginBottom: 36,
           }}
         >
-          <RSLogo size={26} />
+          <RSLogo width={180} />
         </div>
 
         <div

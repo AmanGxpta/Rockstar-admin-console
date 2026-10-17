@@ -3,53 +3,26 @@ import Link from "next/link";
 import { Icon, type IconName } from "./icon";
 
 /**
- * Main's brand has no supplied logo asset, so the mark is drawn rather than
- * imported — unlike the white-label build's RSLogo, which renders
- * public/logo.svg. Keep this function's body branch-specific when merging;
- * every call site only ever passes `size`, so the two implementations can
- * diverge freely without touching call sites.
+ * The Rock Star lockup, public/logo.svg — the supplied artwork, wordmark
+ * knocked out of its red plate. Sized by width: the wordmark is a thin band
+ * across a tall plate, and width is what keeps it legible.
  */
 export function RSLogo({
-  size = 22,
-  color = "var(--ink)",
-  mark = "var(--clay)",
-  wordmark = true,
+  width = 160,
   style,
 }: {
-  size?: number;
-  color?: string;
-  mark?: string;
-  wordmark?: boolean;
+  width?: number;
   style?: CSSProperties;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: size * 0.36, ...style }}>
-      <svg
-        width={size * 1.04}
-        height={size * 1.04}
-        viewBox="0 0 24 24"
-        style={{ flexShrink: 0 }}
-      >
-        <path
-          d="M12 1.5l2.3 6.9 7.2.3-5.7 4.4 2 6.9L12 16.1 6.2 20l2-6.9L2.5 8.7l7.2-.3L12 1.5Z"
-          fill={mark}
-        />
-        <circle cx="12" cy="11.6" r="2.1" fill="#fff" fillOpacity="0.92" />
-      </svg>
-      {wordmark && (
-        <span
-          style={{
-            fontFamily: "var(--font-head)",
-            fontWeight: 800,
-            fontSize: size,
-            color,
-            letterSpacing: "-.03em",
-          }}
-        >
-          Rockstar
-        </span>
-      )}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/logo.svg"
+      alt="Rock Star"
+      width={width}
+      height={Math.round((width * 256.5) / 696.5)}
+      style={{ display: "block", ...style }}
+    />
   );
 }
 
