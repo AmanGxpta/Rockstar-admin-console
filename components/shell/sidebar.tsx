@@ -159,7 +159,7 @@ const menuItemStyle = {
  * one nav item you never mean to hit, and it sat one pixel-slip below Messages.
  */
 function AccountRow({ session }: { session: Session }) {
-  const { signOut, openUserProfile } = useClerk();
+  const { signOut } = useClerk();
   const router = useRouter();
   const [menu, setMenu] = useState(false);
 
@@ -202,7 +202,6 @@ function AccountRow({ session }: { session: Session }) {
               [
                 ["Profile", "user", () => router.push("/account/profile")],
                 ["Settings", "gear", () => router.push("/account/settings")],
-                ["Account settings", "lock", () => openUserProfile()],
                 ["Sign out", "logout", () => signOut({ redirectUrl: "/login" })],
               ] as const
             ).map(([label, icon, run]) => (
