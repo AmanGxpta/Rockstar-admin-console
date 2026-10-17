@@ -35,14 +35,14 @@ export default async function AdminDashboard() {
         anywhere, so they have been dropped rather than invented. They come
         back when there is event tracking to compute them from.
       */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+      <div className="rs-kpis" style={{ gap: 16, marginBottom: 20 }}>
         <KPI icon="users" label="Students" value={totals.students.toLocaleString()} />
         <KPI icon="book" label="Enrollments" value={totals.enrollments.toLocaleString()} />
         <KPI icon="check2" label="Lesson completion" value={`${totals.completionRate}%`} />
         <KPI icon="award" label="Certificates" value={totals.certificates.toLocaleString()} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, marginBottom: 16 }}>
+      <div className="rs-split-main" style={{ gap: 16, marginBottom: 16 }}>
         <Card>
           <SectionH>Enrollments by month</SectionH>
           {hasTrend ? (
@@ -86,7 +86,7 @@ export default async function AdminDashboard() {
         </Card>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+      <div className="rs-cols-3" style={{ gap: 16 }}>
         <Card>
           <SectionH>Catalogue</SectionH>
           <Figure value={totals.published} label="Published" />

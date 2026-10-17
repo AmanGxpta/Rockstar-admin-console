@@ -60,7 +60,7 @@ export default async function EducatorSubmissions({
           : `${pending} awaiting review · ${all.length} in total`
       }
     >
-      <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
         {FILTERS.map((f) => {
           const on = f.value === active;
           const count =

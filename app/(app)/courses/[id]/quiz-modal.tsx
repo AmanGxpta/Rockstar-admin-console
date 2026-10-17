@@ -341,14 +341,7 @@ export function QuestionEditor({
         </button>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 14,
-          marginTop: 20,
-        }}
-      >
+      <div className="rs-cols-2" style={{ gap: 14, marginTop: 20 }}>
         <div>
           <Label hint="shown after answering">Explanation</Label>
           <TArea

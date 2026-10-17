@@ -30,7 +30,7 @@ export default async function AdminStudents() {
       title="Students"
       sub={`${students.length} ${students.length === 1 ? "student" : "students"}`}
     >
-      <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+      <div className="rs-kpis" style={{ gap: 16, marginBottom: 20 }}>
         <KPI
           icon="user"
           label="Total students"

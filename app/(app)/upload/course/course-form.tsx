@@ -154,7 +154,7 @@ export function CourseForm() {
         />
       </Field>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="rs-cols-2" style={{ gap: 16 }}>
         <Field label="Category">
           <Select
             options={CATEGORIES}

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { LiveRefresh } from "@/components/realtime/live-refresh";
+import { NavDrawerProvider } from "@/components/shell/nav-drawer";
 import { Sidebar } from "@/components/shell/sidebar";
 import { getAuthState } from "@/lib/session";
 import { getNavBadges } from "@/lib/shell-data";
@@ -28,40 +29,42 @@ export default async function AppLayout({
   const badges = await getNavBadges(session.role);
 
   return (
-    <div
-      className="rs"
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        background: "var(--dark)",
-        overflow: "hidden",
-      }}
-    >
-      {/*
-        The two numbers in the sidebar are things somebody is waiting on at the
-        other end, so they move on their own. Mounted here rather than on the
-        queue screen: a request that arrives while an admin is reading a course
-        should light the badge up where they are, not only where they would
-        have seen it anyway.
-      */}
-      {session.role === "admin" && (
-        <LiveRefresh tables={["course_access_requests", "messages"]} />
-      )}
-
-      <Sidebar session={session} badges={badges} />
-
+    <NavDrawerProvider>
       <div
+        className="rs"
         style={{
-          flex: 1,
+          width: "100%",
+          height: "100%",
           display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
           background: "var(--dark)",
+          overflow: "hidden",
         }}
       >
-        {children}
+        {/*
+          The two numbers in the sidebar are things somebody is waiting on at the
+          other end, so they move on their own. Mounted here rather than on the
+          queue screen: a request that arrives while an admin is reading a course
+          should light the badge up where they are, not only where they would
+          have seen it anyway.
+        */}
+        {session.role === "admin" && (
+          <LiveRefresh tables={["course_access_requests", "messages"]} />
+        )}
+
+        <Sidebar session={session} badges={badges} />
+
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            background: "var(--dark)",
+          }}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </NavDrawerProvider>
   );
 }

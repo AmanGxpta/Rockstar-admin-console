@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { getShellNotifications } from "@/lib/shell-data";
+import { NavToggle } from "./nav-drawer";
 import { NotificationPanel } from "./notification-panel";
 import type { Session } from "@/lib/session";
 
@@ -28,17 +29,10 @@ export async function WebShell({
 
   return (
     <>
-      <header
-        style={{
-          height: 68,
-          flexShrink: 0,
-          borderBottom: "0.5px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 28px",
-          gap: 18,
-        }}
-      >
+      {/* Height, padding and how it wraps on a phone are .rs-header's. */}
+      <header className="rs-header">
+        <NavToggle />
+
         {back && (
           <Link
             href={back}
@@ -60,7 +54,7 @@ export async function WebShell({
           </Link>
         )}
 
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="rs-header-title">
           <h1
             className="rs-head"
             style={{ fontSize: 20, margin: 0 }}
@@ -77,13 +71,13 @@ export async function WebShell({
         </div>
 
         <div
+          className="rs-header-search"
           style={{
             width: 220,
             height: 38,
             borderRadius: "var(--r-sm)",
             background: "var(--dark-2)",
             border: "0.5px solid var(--border-mid)",
-            display: "flex",
             alignItems: "center",
             gap: 9,
             padding: "0 13px",
@@ -101,13 +95,10 @@ export async function WebShell({
           role={session.role}
         />
 
-        {actions}
+        {actions && <div className="rs-header-actions">{actions}</div>}
       </header>
 
-      <div
-        style={{ flex: 1, overflowY: "auto", padding: "28px" }}
-        className="rs-noscroll"
-      >
+      <div className="rs-content rs-noscroll">
         {children}
       </div>
     </>

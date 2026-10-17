@@ -3,6 +3,7 @@
 import {
   Fragment,
   type ReactNode,
+  useEffect,
   useMemo,
   useOptimistic,
   useRef,
@@ -114,6 +115,22 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
     }
     return null;
   });
+
+  // Below 900px the editing panel stacks under the structure, so picking a
+  // row would change something off-screen. Bring the panel up to meet it —
+  // only on a selection the author made, not on the one the page opens with.
+  // Compared against the last key rather than a "first run" flag, so Strict
+  // Mode running the effect twice on mount does not count as a selection.
+  const detailRef = useRef<HTMLDivElement>(null);
+  const selectedKey = selected ? `${selected.kind}:${selected.id}` : null;
+  const lastSelected = useRef(selectedKey);
+  useEffect(() => {
+    if (lastSelected.current === selectedKey) return;
+    lastSelected.current = selectedKey;
+    if (!selectedKey || !window.matchMedia("(max-width: 900px)").matches) return;
+    detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedKey]);
+
   const [addMenu, setAddMenu] = useState(false);
   // Which chapter is being renamed in place, if any.
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -355,9 +372,9 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
   return (
     <>
       <div
+        // Side by side on a wide screen; stacked below 900px (.rs-split-aside).
+        className="rs-split-aside"
         style={{
-          display: "grid",
-          gridTemplateColumns: "320px 1fr",
           // The two columns are two different jobs — what the course is, and
           // what you are editing inside it — so the gutter between them is
           // wider than the 16 that stacks the cards within a column.
@@ -692,7 +709,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
             1fr, which is minmax(auto, 1fr), and its automatic minimum would
             let a long clip title or file name push the panel wider than the
             space there is. */}
-        <div style={{ minWidth: 0 }}>
+        <div ref={detailRef} style={{ minWidth: 0, scrollMarginTop: 16 }}>
           {current === null && (
             <Card>
               <p
@@ -703,7 +720,7 @@ export function CourseEditor({ course }: { course: CourseForEditor }) {
                   lineHeight: 1.55,
                 }}
               >
-                Pick a clip or a quiz on the left to edit it.
+                Pick a clip or a quiz in the structure to edit it.
               </p>
             </Card>
           )}

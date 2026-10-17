@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
+import { Icon } from "@/components/ui/icon";
 import {
   Avatar,
   Empty,
@@ -236,6 +237,11 @@ export function MessagesView({
   const router = useRouter();
 
   const [selected, setSelected] = useState<string | null>(threads[0]?.id ?? null);
+  // Which pane a phone shows. Desktop draws both and ignores this; below
+  // 900px .rs-chat hides the other one. It starts on the list even though a
+  // thread is preselected — on a phone, opening Support straight into
+  // whichever conversation happens to be newest hides all the others.
+  const [pane, setPane] = useState<"list" | "thread">("list");
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState("");
@@ -340,15 +346,16 @@ export function MessagesView({
       setComposeBody("");
       setComposeError(null);
       setSelected(started.conversationId);
+      setPane("thread");
       router.refresh();
     });
   };
 
   return (
     <div
+      className="rs-split-aside rs-chat"
+      data-view={pane}
       style={{
-        display: "grid",
-        gridTemplateColumns: "320px 1fr",
         height: "100%",
         border: "0.5px solid var(--border)",
         borderRadius: "var(--r-card)",
@@ -356,6 +363,7 @@ export function MessagesView({
       }}
     >
       <div
+        className="rs-chat-list"
         style={{ borderRight: "0.5px solid var(--border)", display: "flex", flexDirection: "column" }}
       >
         <div
@@ -383,14 +391,20 @@ export function MessagesView({
                 key={t.id}
                 thread={t}
                 active={t.id === selected}
-                onClick={() => setSelected(t.id)}
+                onClick={() => {
+                  setSelected(t.id);
+                  setPane("thread");
+                }}
               />
             ))
           )}
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", background: "var(--dark-2)" }}>
+      <div
+        className="rs-chat-thread"
+        style={{ display: "flex", flexDirection: "column", background: "var(--dark-2)", minWidth: 0 }}
+      >
         {!thread ? (
           <div
             style={{
@@ -416,6 +430,22 @@ export function MessagesView({
                 borderBottom: "0.5px solid var(--border)",
               }}
             >
+              <div className="rs-mobile-only">
+                <button
+                  type="button"
+                  aria-label="Back to conversations"
+                  onClick={() => setPane("list")}
+                  style={{
+                    display: "flex",
+                    border: "none",
+                    background: "none",
+                    padding: 4,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Icon name="arrowL" size={19} c="var(--text-secondary)" />
+                </button>
+              </div>
               <Avatar name={thread.with.name} size={32} />
               <div>
                 <div style={{ fontSize: 14, color: "var(--text-primary)" }}>

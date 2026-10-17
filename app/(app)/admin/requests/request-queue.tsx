@@ -112,8 +112,9 @@ export function RequestQueue({ requests }: { requests: AccessRequestRow[] }) {
           const state = STATE[request.state];
           return (
             <Card key={request.id} pad={0} style={{ overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "stretch" }}>
-                <div style={{ width: 132, flexShrink: 0 }}>
+              {/* Below 600px the buttons wrap under the details (.rs-request-*). */}
+              <div className="rs-request-row">
+                <div className="rs-request-cover">
                   <CoverImage path={request.course.coverPath} h={116} />
                 </div>
 
@@ -131,7 +132,15 @@ export function RequestQueue({ requests }: { requests: AccessRequestRow[] }) {
                       <div style={{ fontSize: 13.5, color: "var(--text-primary)" }}>
                         {request.student.name}
                       </div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+                      {/* An email has no spaces to break at, so on a narrow row
+                          it ran under the state tag beside it. */}
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          color: "var(--text-muted)",
+                          overflowWrap: "anywhere",
+                        }}
+                      >
                         {request.student.email ?? "—"} · asked {ago(request.createdAt)}
                       </div>
                     </div>
@@ -187,19 +196,11 @@ export function RequestQueue({ requests }: { requests: AccessRequestRow[] }) {
                 </div>
 
                 {request.state === "pending" && (
-                  <div
-                    style={{
-                      display: "flex",
-                      // Top, not centre: the row's first line — avatar, name,
-                      // and the state tag on a decided row — is what these
-                      // align to, and 14px is that line's own padding, so the
-                      // buttons and the name share a centre line.
-                      alignItems: "flex-start",
-                      gap: 8,
-                      padding: "14px 16px 0",
-                      flexShrink: 0,
-                    }}
-                  >
+                  // Top, not centre: the row's first line — avatar, name, and
+                  // the state tag on a decided row — is what these align to,
+                  // and 14px is that line's own padding, so the buttons and the
+                  // name share a centre line.
+                  <div className="rs-request-actions">
                     <WBtn
                       kind="ghost"
                       icon="x"

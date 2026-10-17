@@ -223,7 +223,7 @@ export function ExamBuilder({
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16 }}>
+      <div className="rs-split-aside-end" style={{ gap: 16 }}>
         <Card pad={0}>
           <div style={{ padding: "18px 20px 6px" }}>
             <SectionH

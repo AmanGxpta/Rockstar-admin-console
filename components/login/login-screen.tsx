@@ -44,6 +44,8 @@ function LeftPanel() {
   const s = SLIDES[i];
   return (
     <div
+      // Hidden below 900px, where the form takes the whole screen.
+      className="rs-login-art"
       style={{
         position: "relative",
         height: "100%",
@@ -55,8 +57,6 @@ function LeftPanel() {
         padding: "44px 48px",
       }}
     >
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <RSLogo width={180} />
       {/*
         Stills from the Foil Basics course, one per slide. All three are
         mounted and crossfaded on opacity rather than swapped, so a slide
@@ -96,6 +96,8 @@ function LeftPanel() {
             "linear-gradient(180deg, rgba(17,17,17,0.35) 0px, rgba(17,17,17,0) 160px)",
         }}
       />
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <RSLogo width={180} />
       </div>
 
       <div
@@ -559,12 +561,10 @@ export function LoginScreen() {
 
   return (
     <div
-      className="rs"
+      className="rs rs-login"
       style={{
         width: "100%",
         height: "100%",
-        display: "grid",
-        gridTemplateColumns: "1.05fr 1fr",
         background: "var(--dark)",
       }}
     >
@@ -576,7 +576,7 @@ export function LoginScreen() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "40px",
+          padding: "40px 24px",
           overflowY: "auto",
           background: "var(--dark)",
         }}
@@ -587,6 +587,11 @@ export function LoginScreen() {
           onSubmit={onSubmit}
           style={{ width: "100%", maxWidth: 372 }}
         >
+          {/* The photo panel carries the logo on wide screens; with that
+              panel hidden, the form does. */}
+          <div className="rs-mobile-only" style={{ marginBottom: 32 }}>
+            <RSLogo width={150} />
+          </div>
           <h1 className="rs-head" style={{ margin: 0, fontSize: 30 }}>
             {copy.title}
           </h1>

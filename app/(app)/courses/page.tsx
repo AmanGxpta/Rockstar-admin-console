@@ -67,7 +67,7 @@ export default async function Courses({
         </Link>
       }
     >
-      <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
         {FILTERS.map((f) => {
           const on = f.value === active;
           return (

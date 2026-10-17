@@ -444,6 +444,10 @@ export function SectionH({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        // On a narrow card the action drops under the heading instead of
+        // being drawn over the end of it.
+        flexWrap: "wrap",
+        gap: "8px 12px",
         marginBottom: 16,
       }}
     >
@@ -462,60 +466,66 @@ export function SectionH({
 export type Col = [string, number?, CSSProperties["textAlign"]?];
 
 export function Table({ cols, rows }: { cols: Col[]; rows: ReactNode[][] }) {
+  // Columns are flex shares, so on a phone five of them were squeezed until
+  // headings ran together and cells drew over each other. The table keeps a
+  // floor of 120px a column and scrolls sideways inside its card below that;
+  // the page itself never does.
   return (
-    <div style={{ width: "100%" }}>
-      <div
-        style={{
-          display: "flex",
-          padding: "0 16px 12px",
-          borderBottom: "0.5px solid var(--border-mid)",
-        }}
-      >
-        {cols.map(([label, flex, align], i) => (
-          <div
-            key={i}
-            className="rs-word"
-            style={{
-              flex: flex ?? 1,
-              fontSize: 10,
-              fontWeight: 200,
-              letterSpacing: "0.12em",
-              color: "var(--text-muted)",
-              textAlign: align ?? "left",
-            }}
-          >
-            {label}
-          </div>
-        ))}
-      </div>
-      {rows.map((row, i) => (
+    <div style={{ width: "100%", overflowX: "auto" }} className="rs-noscroll">
+      <div style={{ width: "100%", minWidth: cols.length * 120 }}>
         <div
-          key={i}
-          className="rs-row"
           style={{
             display: "flex",
-            alignItems: "center",
-            padding: "13px 16px",
-            borderBottom:
-              i < rows.length - 1 ? "0.5px solid var(--border)" : "none",
+            padding: "0 16px 12px",
+            borderBottom: "0.5px solid var(--border-mid)",
           }}
         >
-          {row.map((cell, j) => (
+          {cols.map(([label, flex, align], i) => (
             <div
-              key={j}
+              key={i}
+              className="rs-word"
               style={{
-                flex: cols[j][1] ?? 1,
-                fontSize: 13.5,
-                color: "var(--text-secondary)",
-                textAlign: cols[j][2] ?? "left",
-                minWidth: 0,
+                flex: flex ?? 1,
+                fontSize: 10,
+                fontWeight: 200,
+                letterSpacing: "0.12em",
+                color: "var(--text-muted)",
+                textAlign: align ?? "left",
               }}
             >
-              {cell}
+              {label}
             </div>
           ))}
         </div>
-      ))}
+        {rows.map((row, i) => (
+          <div
+            key={i}
+            className="rs-row"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "13px 16px",
+              borderBottom:
+                i < rows.length - 1 ? "0.5px solid var(--border)" : "none",
+            }}
+          >
+            {row.map((cell, j) => (
+              <div
+                key={j}
+                style={{
+                  flex: cols[j][1] ?? 1,
+                  fontSize: 13.5,
+                  color: "var(--text-secondary)",
+                  textAlign: cols[j][2] ?? "left",
+                  minWidth: 0,
+                }}
+              >
+                {cell}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

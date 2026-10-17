@@ -141,11 +141,11 @@ export function NotificationPanel({
           <section
             id="console-notification-panel"
             aria-label="Notifications"
+            // Position and width are .rs-notif-panel's: a 390px dropdown off
+            // the bell is wider than a phone, so below 900px it pins to the
+            // screen's edges instead.
+            className="rs-notif-panel"
             style={{
-              position: "absolute",
-              top: 48,
-              right: 0,
-              width: 390,
               maxHeight: "min(560px, calc(100vh - 92px))",
               display: "flex",
               flexDirection: "column",

@@ -57,8 +57,10 @@ export function GrantAccess({
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ flex: 1.6 }}>
+      {/* Wraps rather than squeezes: on a phone the course picker takes its
+          own line, and the term and the button share the next. */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: "1.6 1 220px" }}>
           <Select
             options={courses.map((c) => ({ value: c.id, label: c.title }))}
             placeholder="Choose a course"
@@ -66,7 +68,7 @@ export function GrantAccess({
             onChange={setCourseId}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: "1 1 140px" }}>
           <Select
             options={DURATIONS}
             value={duration}

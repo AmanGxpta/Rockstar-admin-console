@@ -28,6 +28,7 @@ import {
   LuFlame,
   LuGlobe,
   LuGripVertical,
+  LuMenu,
   LuHeart,
   LuHouse,
   LuImage,
@@ -119,6 +120,7 @@ const OUTLINE = {
   check2: LuCheckCheck,
   mic: LuMic,
   grip: LuGripVertical,
+  menu: LuMenu,
 } as const;
 
 /** `-f` names render a solid glyph; stroke width means nothing to them. */

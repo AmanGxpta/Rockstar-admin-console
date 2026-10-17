@@ -7,6 +7,7 @@ import { useClerk } from "@clerk/nextjs";
 import { Icon } from "@/components/ui/icon";
 import { RSLogo, Avatar } from "@/components/ui/primitives";
 import { navFor, type NavBadges, type NavItem } from "@/lib/nav";
+import { useNavDrawer } from "./nav-drawer";
 import type { Session } from "@/lib/session";
 
 function itemStyle(active: boolean, inert: boolean) {
@@ -36,6 +37,7 @@ function NavRow({
   badge?: number;
 }) {
   const inert = item.href === null;
+  const { setOpen } = useNavDrawer();
   const content = (
     <>
       <Icon
@@ -80,6 +82,9 @@ function NavRow({
       href={item.href!}
       className="rs-navitem"
       style={itemStyle(active, false)}
+      // A link to the screen already open does not change the path, so the
+      // drawer is shut here rather than left to the path changing.
+      onClick={() => setOpen(false)}
     >
       {content}
     </Link>
@@ -95,12 +100,13 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const groups = navFor(session.role);
+  const { open } = useNavDrawer();
 
   return (
-    <div
+    // Width and, below 900px, the drawer behaviour are the .rs-sidebar class's.
+    <nav
+      className={open ? "rs-sidebar is-open" : "rs-sidebar"}
       style={{
-        width: 240,
-        flexShrink: 0,
         background: "var(--dark)",
         borderRight: "0.5px solid var(--border)",
         display: "flex",
@@ -134,7 +140,7 @@ export function Sidebar({
       </div>
 
       <AccountRow session={session} />
-    </div>
+    </nav>
   );
 }
 

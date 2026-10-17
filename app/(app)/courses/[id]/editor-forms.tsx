@@ -197,7 +197,7 @@ export function ClipForm({
     // what it shows is this component's state: the file an author has just
     // dropped is attached here and not saved anywhere yet, and a box rendered
     // one level up could only ever show what the last save left behind.
-    <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 18 }}>
+    <div className="rs-split-label" style={{ gap: 18 }}>
       <ClipPreview path={url} kind={kind} fileName={fileName} />
 
       <div style={{ minWidth: 0 }}>
