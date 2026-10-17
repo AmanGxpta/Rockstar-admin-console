@@ -319,7 +319,7 @@ type Mode = "signin" | "forgot" | "reset" | "verify";
 const COPY: Record<Mode, { title: string; blurb: string; cta: string }> = {
   signin: {
     title: "Welcome back",
-    blurb: "Sign in to your Rockstar studio.",
+    blurb: "Sign in to Rockstar.",
     cta: "Sign in",
   },
   forgot: {
