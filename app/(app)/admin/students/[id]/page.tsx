@@ -27,10 +27,12 @@ export default async function AdminStudentDetail({
 }) {
   const session = await requireSession("admin");
   const { id } = await params;
-  const student = await getStudent(id);
+  // Independent reads, so they go out together rather than one after the other.
+  const [student, grantable] = await Promise.all([
+    getStudent(id),
+    listGrantableCourses(),
+  ]);
   if (!student) notFound();
-
-  const grantable = await listGrantableCourses();
 
   return (
     <WebShell

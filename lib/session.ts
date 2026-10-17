@@ -1,12 +1,15 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import { warmShell } from "./shell-data";
 import { createSupabaseServerClient } from "./supabase";
 
 export type Role = "admin" | "educator";
 
 export type Session = {
   clerkUserId: string;
+  /** `users.id` — what RLS, foreign keys and `current_user_id()` speak. */
+  userId: string;
   name: string;
   email: string;
   role: Role;
@@ -53,7 +56,7 @@ export const getAuthState = cache(async (): Promise<AuthState> => {
   // is the same freshness every other screen in this console already has.
   const { data, error } = await supabase
     .from("users")
-    .select("role, full_name, email")
+    .select("id, role, full_name, email")
     .eq("clerk_id", userId)
     .maybeSingle();
 
@@ -72,6 +75,7 @@ export const getAuthState = cache(async (): Promise<AuthState> => {
     status: "ok",
     session: {
       clerkUserId: userId,
+      userId: data.id,
       name: name || email || "Account",
       email,
       role: data.role,
@@ -92,6 +96,7 @@ export async function requireSession(role: Role): Promise<Session> {
   const state = await getAuthState();
   if (state.status !== "ok") redirect("/");
   if (state.session.role !== role) redirect(homeFor(state.session.role));
+  warmShell();
   return state.session;
 }
 
@@ -112,5 +117,6 @@ export async function requireSession(role: Role): Promise<Session> {
 export async function requireTeam(): Promise<Session> {
   const state = await getAuthState();
   if (state.status !== "ok") redirect("/");
+  warmShell();
   return state.session;
 }

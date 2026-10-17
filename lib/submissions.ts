@@ -1,7 +1,6 @@
 import "server-only";
 
-import { auth } from "@clerk/nextjs/server";
-
+import { getAuthState } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 import type { Database } from "@/types/database";
 
@@ -215,19 +214,13 @@ async function nameReviewers(
   return names;
 }
 
-/** The signed-in account's `users.id`, which the session only has a Clerk id for. */
+/**
+ * The signed-in account's `users.id`, read off the request's cached session
+ * rather than looked up again by Clerk id.
+ */
 export async function currentUserId(): Promise<string | null> {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return null;
-
-  const supabase = createSupabaseServerClient();
-  const { data } = await supabase
-    .from("users")
-    .select("id")
-    .eq("clerk_id", clerkId)
-    .maybeSingle();
-
-  return data?.id ?? null;
+  const state = await getAuthState();
+  return state.status === "ok" ? state.session.userId : null;
 }
 
 export async function getSubmission(

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getAuthState } from "./session";
 import { createSupabaseServerClient } from "./supabase";
 
 export type ThreadParticipant = {
@@ -77,11 +78,14 @@ type MessageRow = {
   media: { id: string; path: string; kind: string; position: number }[] | null;
 };
 
-/** The caller's `users.id`, which this app otherwise only holds a Clerk id for. */
+/**
+ * The caller's `users.id`. Read off the request's session, which already
+ * fetched the row — this used to be its own `current_user_id()` round trip,
+ * paid on every screen through the sidebar's unread count.
+ */
 async function currentUserId(): Promise<string | null> {
-  const supabase = createSupabaseServerClient();
-  const { data } = await supabase.rpc("current_user_id");
-  return (data as string | null) ?? null;
+  const state = await getAuthState();
+  return state.status === "ok" ? state.session.userId : null;
 }
 
 /**

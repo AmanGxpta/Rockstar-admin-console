@@ -16,10 +16,14 @@ export default async function ExamBuilderPage({
   const session = await requireTeam();
   const { id: courseId } = await params;
 
-  // Reading the course first is the ownership check: RLS returns null for a
-  // course this educator does not author, and the exam read would otherwise
-  // come back as a silently empty bank.
-  const course = await getCourseForEditor(courseId);
+  // The course read is the ownership check: RLS returns null for a course
+  // this educator does not author, and the exam read would otherwise come back
+  // as a silently empty bank. Both go out together — the exam read is RLS-bound
+  // too, and nothing from it is rendered until the course check below passes.
+  const [course, exam] = await Promise.all([
+    getCourseForEditor(courseId),
+    getExamForCourse(courseId),
+  ]);
   if (!course) notFound();
 
   // The editor hides the link into here while a course is locked, but the
@@ -30,7 +34,7 @@ export default async function ExamBuilderPage({
     redirect(`/courses/${courseId}`);
   }
 
-  const { settings, bank } = await getExamForCourse(courseId);
+  const { settings, bank } = exam;
 
   return (
     <WebShell

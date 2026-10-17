@@ -45,9 +45,14 @@ export async function getEducatorAccount(): Promise<EducatorAccount | null> {
 
   const supabase = createSupabaseServerClient();
 
+  // One read: the educator profile hangs off users.id one-to-one, so it is
+  // embedded rather than fetched after the user row comes back.
   const { data: user, error } = await supabase
     .from("users")
-    .select("id, full_name, email, phone, bio, avatar_url, notification_prefs")
+    .select(
+      `id, full_name, email, phone, bio, avatar_url, notification_prefs,
+       educator_profiles ( id, headline, specialization, years_experience, is_verified )`,
+    )
     .eq("clerk_id", clerkId)
     .maybeSingle();
 
@@ -56,11 +61,7 @@ export async function getEducatorAccount(): Promise<EducatorAccount | null> {
     return null;
   }
 
-  const { data: profile } = await supabase
-    .from("educator_profiles")
-    .select("id, headline, specialization, years_experience, is_verified")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const profile = user.educator_profiles;
 
   return {
     userId: user.id,

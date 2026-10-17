@@ -6,42 +6,47 @@ import { getNotificationInbox } from "@/lib/notifications";
 import type { Role } from "@/lib/session";
 
 /**
- * The three reads the chrome needs: the notification inbox, and the two
- * sidebar counts an admin sees beside Access requests and Support.
+ * The two sidebar counts an admin sees beside Enrollment requests and Support.
  *
- * Request-scoped through `cache`, which is the whole point — see `warmShell`.
+ * Read by app/(app)/layout.tsx, which is the point of splitting them from the
+ * notifications below: a layout is not re-rendered on client navigation, so
+ * these are paid on a full load and on `router.refresh()` (LiveRefresh calls
+ * that whenever either table changes) — not on every click between screens.
  */
-export const getShellData = cache(async (role: Role) => {
-  const [notifications, accessRequests, supportUnread] = await Promise.all([
-    getNotificationInbox(),
-    role === "admin" ? countPendingAccessRequests() : Promise.resolve(0),
-    role === "admin" ? countSupportUnread() : Promise.resolve(0),
-  ]);
+export const getNavBadges = cache(async (role: Role) => {
+  if (role !== "admin") return { accessRequests: 0, supportUnread: 0 };
 
-  return { notifications, accessRequests, supportUnread };
+  const [accessRequests, supportUnread] = await Promise.all([
+    countPendingAccessRequests(),
+    countSupportUnread(),
+  ]);
+  return { accessRequests, supportUnread };
 });
 
 /**
- * Starts those reads at the top of the request instead of at the bottom.
+ * The notification inbox the header bell draws. The header belongs to the
+ * page, so unlike the badges this is read on every navigation.
+ *
+ * Request-scoped through `cache`, which is what `warmShell` relies on.
+ */
+export const getShellNotifications = cache(() => getNotificationInbox());
+
+/**
+ * Starts the notification read at the top of the request instead of the
+ * bottom.
  *
  * WebShell is the value a page *returns*, so its awaits only began once the
- * page's own awaits had finished. Measured on the built app, that put the
- * chrome's queries last in a chain: ~408ms resolving the session, ~352ms for
- * the page's data, then ~602ms for these — 1.36s of a 1.7s response, almost
- * all of it waiting on a database in ap-southeast-2 where a single round trip
- * costs ~370ms. Nothing here depends on anything the page reads, so the
- * waiting was pure sequence.
- *
- * The layout calls this without awaiting it. By the time WebShell asks, the
- * same promise is already in flight or settled, and the chain is one level
- * shorter for every screen in the console.
+ * page's own awaits had finished — the chrome's query ran last in a chain,
+ * against a database where one round trip is a few hundred milliseconds.
+ * Nothing here depends on what the page reads, so the waiting was pure
+ * sequence. requireSession() and requireTeam() call this the moment the
+ * session resolves, before the page asks for its own data.
  *
  * The `catch` is bookkeeping, not error handling: it marks the promise as
  * having a rejection handler so an early failure is not reported as an
  * unhandled rejection. `cache` hands WebShell that same promise, so a genuine
- * failure still surfaces there and still takes the page down, exactly as it
- * did when the call was made from inside the shell.
+ * failure still surfaces there and still takes the page down.
  */
-export function warmShell(role: Role): void {
-  void getShellData(role).catch(() => {});
+export function warmShell(): void {
+  void getShellNotifications().catch(() => {});
 }

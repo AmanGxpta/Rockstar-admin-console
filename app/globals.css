@@ -324,3 +324,16 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* app/(app)/loading.tsx — the content column while the next screen renders */
+.rs-skeleton {
+  background: var(--dark-2);
+  border-radius: var(--r-sm);
+  animation: rs-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rs-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
