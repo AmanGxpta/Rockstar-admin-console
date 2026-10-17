@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { WebShell } from "@/components/shell";
 import { Area } from "@/components/ui/charts";
-import { Card, Empty, KPI, ProgressBar, SectionH, WBtn } from "@/components/ui/primitives";
+import { Card, Empty, KPI, ProgressBar, SectionH } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/session";
 import { getCategoryMix, getEnrollmentTrend, getPlatformTotals } from "@/lib/reporting";
 
@@ -28,13 +27,6 @@ export default async function AdminDashboard() {
       session={session}
       title="Analytics"
       sub="Platform overview · read live from the database"
-      actions={
-        <Link href="/admin/reports/courses" style={{ textDecoration: "none" }}>
-          <WBtn kind="ghost" icon="chart" sm>
-            Full report
-          </WBtn>
-        </Link>
-      }
     >
       {/*
         Four figures, all of them derived from rows that exist. The previous
