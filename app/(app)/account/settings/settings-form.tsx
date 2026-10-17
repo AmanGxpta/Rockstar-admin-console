@@ -100,7 +100,7 @@ export function SettingsForm({
   email: string;
   prefs: NotificationPrefs;
 }) {
-  const { openUserProfile, signOut } = useClerk();
+  const { signOut } = useClerk();
   const [saved, setSaved] = useState<NotificationPrefs>(prefs);
   const [draft, setDraft] = useState<NotificationPrefs>(prefs);
   const [result, setResult] = useState<ActionResult | null>(null);
@@ -185,7 +185,7 @@ export function SettingsForm({
           {/*
             Email, password and MFA are Clerk's, not ours — `users.email` is a
             mirror the webhook keeps current, so editing it here would be
-            writing to a copy. Clerk's own modal is the honest control.
+            writing to a copy. The address is shown, not edited.
           */}
           <div
             style={{
@@ -209,9 +209,6 @@ export function SettingsForm({
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <WBtn kind="ghost" icon="gear" onClick={() => openUserProfile()}>
-              Manage sign-in
-            </WBtn>
             <WBtn
               kind="ghost"
               icon="logout"
